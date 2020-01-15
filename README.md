@@ -19,7 +19,7 @@ with the name of the programming language the library was written in. The follow
 - python
   - Requires the python modules [numpy](https://numpy.org/) and [Amulet-Core](https://github.com/Amulet-Team/Amulet-Core)
   - Currently tested with Python 3.6+
-- Java
+- Java (work in progress)
   - Requires the java NBT library from Github user [Querz](https://github.com/Querz/NBT), however any NBT library could 
     be used as long as it supports loading of TAG_Compound's from a ByteBuffer or array of `bytes`
     

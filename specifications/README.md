@@ -1,9 +1,9 @@
 # Version History
 
 ## Summary
-|Version Number| Date |Notable Changes|
-|:------------:|:----:|:-------------:|
-|0|1.13.2020|Initial Revision|
+|Version Number| Date |Notable Changes|Development Phase|
+|:------------:|:----:|:-------------:|:---------------:|
+|0|1.13.2020|Initial Revision|Design|
 
 ## Version Details
 ### Version 0

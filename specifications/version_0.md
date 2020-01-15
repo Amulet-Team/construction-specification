@@ -58,7 +58,7 @@ as a Compound NBT Tag with the following structure:
 ```
 
 ## Chunk Index Table
-Continuous buffer of bytes detailing a chunk's (a chunk in this context is a 15x16x16 cube region) index 
+Continuous buffer of bytes detailing a chunk's (a chunk in this context is a 16x16x16 cube region) index 
 (after the block palette) and it's corresponding chunk X, Y and Z coordinates (>= 0 values only). These values are 
 packed as a C Struct with the struct format of `<IIII` (4 unsigned ints), and are ordered as (index, chunk X coordinate, chunk Y coordinate, chunk Z coordinate)
 
