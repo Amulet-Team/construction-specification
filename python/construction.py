@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import functools
+import io
 import itertools
-from typing import List, Tuple, Dict, Union, Iterator, IO, Mapping
+from typing import Tuple,  Union, IO, Type
 
 import struct
 
@@ -11,87 +13,156 @@ from amulet.api import Block
 
 import amulet_nbt as nbt
 
-version_struct = struct.Struct("<B")
-
-chunk_index_struct = struct.Struct("<4I")
-CHUNK_INDEX_SIZE = chunk_index_struct.size
-
 int_struct = struct.Struct("<I")
 
-DT = np.dtype(int)
+def find_fitting_array_type(
+    array: np.ndarray
+) -> Type[Union[nbt.TAG_Int_Array, nbt.TAG_Byte_Array]]:
+    max_element = array.max()
 
-size_map = {
-    struct.calcsize("<B"): struct.Struct("<B"),
-    struct.calcsize("<H"): struct.Struct("<H"),
-    struct.calcsize("<I"): struct.Struct("<I"),
-}
+    if max_element <= 127:
+        return nbt.TAG_Byte_Array
+    else:
+        return nbt.TAG_Int_Array
 
 
-def find_fitting_struct(array: np.ndarray) -> struct.Struct:
-    max_element_value = array.max()
-    for struct_size, struct_obj in size_map.items():
-        max_supported_value = (2 ** (8 * struct_size)) - 1
-        if max_element_value <= max_supported_value:
-            return struct_obj
-    return struct.Struct("<I")
+def to_flattened_index(
+    x: int, y: int, z: int, structure_size: Tuple[int, int, int]
+) -> int:
+    dx, dy, dz = structure_size
+    return x * dy * dz + y * dz + z
+
+
+def from_flattened_index(
+    i: int, structure_size: Tuple[int, int, int]
+) -> Tuple[int, int, int]:
+    dx, dy, dz = structure_size
+    x = i // (dy * dz)
+    y = (i // dz) % dy
+    z = i % dz
+
+    return x, y, z
 
 
 class Construction:
-    class ConstructionSubSection:
-        __slots__ = ("cx", "cy", "cz", "blocks")
+    class ConstructionSection:
+        __slots__ = ("sx", "sy", "sz", "blocks", "entities", "tile_entities")
 
-        def __init__(self, cx: int, cy: int, cz: int, blocks: np.ndarray):
-            self.cx, self.cy, self.cz = cx, cy, cz
+        def __init__(
+            self,
+            sx: int,
+            sy: int,
+            sz: int,
+            blocks: np.ndarray,
+            entities: list,
+            tile_entities: list,
+        ):
+            self.sx = sx
+            self.sy = sy
+            self.sz = sz
             self.blocks = blocks
+            self.entities = entities
+            self.tile_entities = tile_entities
 
-        def __repr__(self):
-            return f"_ConstructionSubChunk(cx={self.cx}, cy={self.cy} cz={self.cz}, blocks={self.blocks})"
-
-        def __eq__(self, other: "Construction.ConstructionSubSection") -> bool:
-            if other is None:
+        def __eq__(self, other):
+            if not isinstance(other, Construction.ConstructionSection):
                 return False
             return (
-                self.cx == other.cx
-                and self.cy == other.cy
-                and self.cz == other.cz
+                self.sx == other.sx
+                and self.sy == other.sy
+                and self.sz == other.sz
                 and np.equal(self.blocks, other.blocks).all()
+                and self.entities == other.entities
+                and self.tile_entities == other.tile_entities
             )
 
-        def __getattr__(self, item):
-            return getattr(self.blocks, item)
-
-    def __init__(
-        self,
-        chunk_sections: "Dict[Tuple[int, int, int], ConstructionSubSection]",
-        block_palette: "List[Block]",
-        extra_data: nbt.TAG_Compound,
-    ):
-        self.chunk_sections = chunk_sections
+    def __init__(self, sections, block_palette):
+        self.sections = sections
         self.block_palette = block_palette
-        self.extra_data = extra_data
 
-    @property
-    def sections(self):
-        yield from self.chunk_sections
-
-    def __eq__(self, other: Construction) -> bool:
-        if not other:
+    def __eq__(self, other):
+        if not isinstance(other, Construction):
             return False
         return (
-            self.chunk_sections == other.chunk_sections
+            self.sections == other.sections
             and self.block_palette == other.block_palette
         )
 
-    def save(self, filename: str = None, buffer: IO = None) -> None:
+    @classmethod
+    def create_from(cls, iterable, palette) -> Construction:
+        sections = {}
+        for section in iterable:
+            if isinstance(section, cls.ConstructionSection):
+                sections[(section.sx, section.sy, section.sz)] = section
+            else:
+                sx, sy, sz = section.sx, section.sy, section.sz
+                sections[(sx, sy, sz)] = cls.ConstructionSection(
+                    sx, sy, sz, section.blocks, section.entities, section.tile_entities
+                )
+        return cls(sections, palette)
+
+    def save(self, filename: str = None, buffer: IO = None):
         if filename is None and buffer is None:
             raise Exception()
 
         if filename is not None:
-            buffer = open(filename, "wb")
+            buffer = open(filename, "wb+")
 
-        buffer.write(
-            version_struct.pack(1)
-        )  # Unsigned char at beginning of file for format version
+        def generate_section_entry(_section: Construction.ConstructionSection):
+            flattened_array = _section.blocks.ravel()
+            array_type = find_fitting_array_type(flattened_array)
+            _tag = nbt.TAG_Compound(
+                {
+                    "Entities": nbt.TAG_List(_section.entities),
+                    "TileEntities": nbt.TAG_List(_section.tile_entities),
+                    "Blocks": array_type(flattened_array),
+                    "BlocksArrayType": nbt.TAG_Byte(array_type().tag_id),
+                }
+            )
+            return nbt.NBTFile(_tag)
+
+        magic_num = "construct".encode("utf-8")
+        buffer.write(struct.pack(f"<{len(magic_num)}s", magic_num))
+        buffer.write(struct.pack("<B", 1))
+
+        section_map = {}
+        for (sx, sy, sz), section_data in self.sections.items():
+            position = buffer.tell()
+            section_map[(sx, sy, sz)] = position
+            section_buffer = io.BytesIO()
+            generate_section_entry(section_data).save_to(
+                filename_or_buffer=section_buffer, compressed=True
+            )
+            buffer.write(section_buffer.getvalue())
+
+        sx_max = max(map(lambda s: s[0], section_map.keys()))
+        sy_max = max(map(lambda s: s[1], section_map.keys()))
+        sz_max = max(map(lambda s: s[2], section_map.keys()))
+
+        structure_size = (sx_max + 1, sy_max + 1, sz_max + 1)
+
+        coordinate_iter = itertools.product(
+            range(sx_max + 1), range(sy_max + 1), range(sz_max + 1)
+        )
+        metadata = nbt.TAG_Compound(
+            {
+                # "index_table": nbt.TAG_Int_Array(
+                #     np.fromiter(
+                #         (section_map.get((x, y, z), 0) for x, y, z in coordinate_iter),
+                #         dtype=int
+                #     )
+                # ),
+                "shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size])
+            }
+        )
+
+        index_table = [0] * functools.reduce(lambda v1, v2: v1 * v2, structure_size)
+        for x, y, z in coordinate_iter:
+            index_table[to_flattened_index(x, y, z, structure_size)] = section_map.get(
+                (x, y, z), 0
+            )
+
+        metadata["index_table"] = nbt.TAG_Int_Array(index_table)
 
         extra_blocks = []
         for block in self.block_palette:
@@ -99,11 +170,9 @@ class Construction:
             if not all((eb in palette for eb in block.extra_blocks)):
                 for eb in filter(lambda eb: eb not in palette, block.extra_blocks):
                     extra_blocks.append(eb)
-
         self.block_palette.extend(extra_blocks)
 
-        buffer.write(int_struct.pack(len(self.block_palette)))
-
+        block_palette_nbt = nbt.TAG_List()
         for block_entry in self.block_palette:
             block_entry_nbt = nbt.TAG_Compound(
                 {
@@ -123,88 +192,65 @@ class Construction:
                     ),
                 }
             )
-            block_entry_nbt.save(buffer)
+            block_palette_nbt.append(block_entry_nbt)
 
-        extra_data = nbt.TAG_Compound(
-            {
-                "Entities": nbt.TAG_List(),
-                "TileEntities": nbt.TAG_List(),
-                "TileTicks": nbt.TAG_List(),
-            }
+        metadata["block_palette"] = block_palette_nbt
+
+        position = buffer.tell()
+        metadata_buffer = io.BytesIO()
+        nbt.NBTFile(metadata).save_to(
+            filename_or_buffer=metadata_buffer, compressed=True
         )
-
-        extra_data.save(buffer)
-
-        buffer.write(int_struct.pack(len(self.chunk_sections) * CHUNK_INDEX_SIZE))
-
-        for i, chunk in enumerate(self.chunk_sections.values()):
-            buffer.write(chunk_index_struct.pack(i, chunk.cx, chunk.cy, chunk.cz))
-
-        for i, chunk in enumerate(self.chunk_sections.values()):
-            blocks_array: np.ndarray = chunk.blocks.copy().ravel()
-            struct_to_use = find_fitting_struct(blocks_array)
-            buffer.write(struct.pack("<IBH", i, struct_to_use.size, len(blocks_array)))
-            for element in blocks_array:
-                buffer.write(struct_to_use.pack(element))
+        buffer.write(metadata_buffer.getvalue())
+        buffer.write(int_struct.pack(position))
 
         buffer.close()
 
     @classmethod
-    def create_from(
-        cls, iterator: Iterator, block_palette: List[Block], extra_data: Mapping
-    ) -> Construction:
-        chunks = {}
-        for section in iterator:
-            if isinstance(section, cls.ConstructionSubSection):
-                chunks[(section.cx, section.cy, section.cz)] = section
-            else:
-                cx, cy, cz = section.cx, section.cy, section.cz
-                chunks[(cx, cy, cz)] = cls.ConstructionSubSection(
-                    cx, cy, cz, section.blocks
-                )
+    def load(cls, filename: str = None, buffer: IO = None, lazy_load: bool = True):
 
-        return Construction(chunks, block_palette, extra_data)
-
-    @classmethod
-    def load(
-        cls, filename: str = None, buffer: IO = None, lazy_load: bool = True
-    ) -> Construction:
         if filename is not None:
             buffer = fp = open(filename, "rb")
             buffer = buffer.read()
             fp.close()
 
-        offset = 0
+        offset = len(buffer)
 
-        def read_from_struct(buf: IO, _struct: "Union[struct.Struct, str]"):
+        def read_from_struct(_buffer: IO, _struct: Union[struct.Struct, str]):
             nonlocal offset
+
             if isinstance(_struct, struct.Struct):
-                _value = _struct.unpack_from(buf, offset)
-                offset += _struct.size
+                _value = _struct.unpack_from(buffer, offset - _struct.size)
             else:
-                _value = struct.unpack_from(_struct, buf, offset)
-                offset += struct.calcsize(_struct)
+                _value = struct.unpack_from(
+                    _struct, buffer, offset - struct.calcsize(_struct)
+                )
+
             return _value
 
-        version_id = read_from_struct(buffer, version_struct)[0]
+        magic_num = buffer[0:9].decode("utf-8")
 
-        block_palette_length = read_from_struct(buffer, int_struct)[0]
+        if magic_num != "construct":
+            raise AssertionError(
+                f'Invalid magic number: expected: "construct", got {magic_num}'
+            )
+
+        metadata_position = read_from_struct(buffer, int_struct)[0]
+
+        metadata = nbt.load(
+            buffer=buffer[metadata_position : len(buffer) - int_struct.size],
+            compressed=True,
+        )
 
         block_palette = []
         extra_block_map = {}
-        block_data, new_offset = nbt.load(
-            buffer=buffer[offset:],
-            compressed=False,
-            count=block_palette_length,
-            offset=True,
-        )
-        for block_index, block_nbt in enumerate(block_data):
-            block_namespce = block_nbt["namespace"].value
-            block_base_name = block_nbt["blockname"].value
+        for block_index, block_nbt in enumerate(metadata["block_palette"]):
+            block_namespace = block_nbt["namespace"].value
+            block_basename = block_nbt["blockname"].value
             properties = {key: v.value for key, v in block_nbt["properties"].items()}
             block = Block(
-                namespace=block_namespce,
-                base_name=block_base_name,
+                namespace=block_namespace,
+                base_name=block_basename,
                 properties=properties,
             )
 
@@ -222,71 +268,29 @@ class Construction:
 
             block_palette[block_index] = resulting_block
 
-        offset += new_offset
+        structure_shape = tuple(map(lambda t: t.value, metadata["shape"]))
 
-        extra_data, new_offset = nbt.load(
-            buffer=buffer[offset:], compressed=False, offset=True
-        )
-        offset += new_offset
-
-        chunk_table_length = read_from_struct(buffer, int_struct)[0]
-
-        number_of_chunks = chunk_table_length // CHUNK_INDEX_SIZE
-        chunks = {}
-        for i in range(number_of_chunks):
-            chunk_index, cx, cy, cz = read_from_struct(buffer, chunk_index_struct)
-            chunks[chunk_index] = {"chunk_coords": (cx, cy, cz), "blocks": None}
-
-        if lazy_load:
-
-            def chunk_iter(
-                _buffer: IO, _number_of_chunks: int
-            ) -> Iterator[Construction.ConstructionSubSection]:
-                # More efficient since iterator value isn't changed, initialized, or used with each iteration
-                for _ in itertools.repeat(None, times=_number_of_chunks):
-                    owning_chunk, element_struct_size, array_len = read_from_struct(
-                        _buffer, "<IBH"
-                    )
-                    element_struct = size_map[element_struct_size]
-
-                    blocks_array = np.zeros(array_len, dtype=DT)
-                    for i in range(array_len):
-                        blocks_array[i] = read_from_struct(_buffer, element_struct)[0]
-                    blocks_array = blocks_array.reshape((16, 16, 16))
-                    yield cls.ConstructionSubSection(
-                        *chunks[owning_chunk]["chunk_coords"], blocks_array
-                    )
-
-        else:
-            # More efficient since iterator value isn't changed, initialized, or used with each iteration
-            for _ in itertools.repeat(None, times=number_of_chunks):
-                owning_chunk, element_struct_size, array_len = read_from_struct(
-                    buffer, "<IBH"
+        def section_iter():
+            for i, index_value in enumerate(metadata["index_table"].value):
+                if index_value == 0:
+                    continue
+                nbt_obj = nbt.load(
+                    buffer=buffer[
+                        index_value : buffer.index(
+                            b"\037\213", index_value + 1
+                        )  # \037\213 is the gzip magic constant
+                    ],
+                    compressed=True,
                 )
-                struct_to_use = size_map[element_struct_size]
+                x, y, z = from_flattened_index(i, structure_shape)
 
-                blocks_array = np.zeros(array_len, dtype=DT)
-                for i in range(array_len):
-                    blocks_array[i] = read_from_struct(buffer, struct_to_use)[0]
-                chunks[owning_chunk]["blocks"] = blocks_array
+                yield Construction.ConstructionSection(
+                    x,
+                    y,
+                    z,
+                    np.reshape(nbt_obj["Blocks"].value, (16, 16, 16)),
+                    nbt_obj["Entities"].value,
+                    nbt_obj["TileEntities"].value,
+                )
 
-            created_chunks = []
-            for chunk_data in chunks.values():
-                cx, cy, cz = chunk_data["chunk_coords"]
-
-                if chunk_data["blocks"] is None:
-                    blocks = np.zeros((16, 16, 16), dtype=np.uint16)
-                else:
-                    blocks = chunk_data["blocks"].reshape((16, 16, 16))
-                created_chunks.append(cls.ConstructionSubSection(cx, cy, cz, blocks))
-
-            def chunk_iter(
-                _1, _2
-            ) -> Iterator[
-                Construction.ConstructionSubSection
-            ]:  # Mimic the arguments of the lazy loader and discard them
-                yield from created_chunks
-
-        return cls.create_from(
-            chunk_iter(buffer, number_of_chunks), block_palette, extra_data
-        )
+        return cls.create_from(section_iter(), block_palette)
