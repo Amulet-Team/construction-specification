@@ -1,7 +1,10 @@
 from __future__ import annotations
+
+import time
 import unittest
 import glob
 import os
+from itertools import product
 
 import numpy as np
 
@@ -10,6 +13,7 @@ from amulet.api import Block
 from .construction import Construction
 
 REMOVE_TEST_GENERATED_FILES = True
+RUN_STRESS_TEST = True
 
 
 class MockedChunk:
@@ -83,6 +87,65 @@ class ConstructionTestCase(unittest.TestCase):
         )
         self.assertEqual(mocked_chunk, construction_obj_2.sections[(0, 0, 0)])
         self.assertEqual(construction_obj_1, construction_obj_2)
+
+    @unittest.skipUnless(RUN_STRESS_TEST, "Stress tests not enabled")
+    def test_construction_creation_2(self):
+        block_layout = np.zeros((16, 16, 16), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[0:8, 0:8, 8:16] = 2
+        block_layout[0:8, 8:16, 0:8] = 3
+        block_layout[0:8, 8:16, 8:16] = 4
+        block_layout[8:16, 0:8, 0:8] = 5
+        block_layout[8:16, 0:8, 8:16] = 6
+        block_layout[8:16, 8:16, 0:8] = 7
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        mocked_chunk = MockedChunk(0, 0, 0, block_layout, [], [])
+
+        def _iter():
+            for x, y, z in product(range(50), range(50), range(50)):
+                yield MockedChunk(x, y, z, block_layout, [], [])
+
+        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette)
+        # Since the mocked chunk object has the same attribute names as the internal section object of Construction
+        # objects we can just directly compare them to see if it was properly added to the construction
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_1.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+        save_start = time.time()
+        construction_obj_1.save("test_construction_creation_2.construction")
+        save_end = time.time()
+
+        load_start = time.time()
+        construction_obj_2 = Construction.load(
+            "test_construction_creation_2.construction"
+        )
+        load_end = time.time()
+
+        self.assertEqual(construction_obj_1, construction_obj_2)
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_2.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+        print(f"Saving Took: {save_end - save_start:02.4f} seconds")
+        print(f"Loading Took: {load_end - load_start:02.4f} seconds")
 
 
 if __name__ == "__main__":

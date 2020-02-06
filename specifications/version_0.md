@@ -1,6 +1,6 @@
 # Construction Format Specification (Version 0)
 
-    <magic number>: char array of size 9
+    <magic number>: UTF-8 char array of value "constrct" (8 bytes)
     <format version>: byte
     <section entry>: TAG_Compound
     <section entry>: TAG_Compound
@@ -27,9 +27,9 @@ Each section entry is a gzip'd TAG_Compound with the following structure:
         "Blocks": <See below>
     })
 
-In order to reduce size of the construction format, the `Blocks` array can either be a `TAG_Byte_Array` or a `TAG_Int_Array`,
-and the value of the `BlocksArrayType` describes which of the two tag types was used by using their Tag ID, which can 
-either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array)
+In order to reduce size of the construction format, the `Blocks` array can either be a `TAG_Byte_Array`, a `TAG_Int_Array`,
+or a `TAG_Long_Array` and the value of the `BlocksArrayType` describes which of the two tag types was used by using their 
+Tag ID, which can either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array) or 12 (for TAG_Long_Array)
 
 ### Chunk Blocks Array
 The block array for each chunk is a flattened 16x16x16 array with each element being comprised of the amount of bytes indicated in the chunk's entry header.

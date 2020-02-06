@@ -3,7 +3,7 @@ from __future__ import annotations
 import functools
 import io
 import itertools
-from typing import Tuple,  Union, IO, Type
+from typing import Tuple, Union, IO, Type
 
 import struct
 
@@ -15,15 +15,18 @@ import amulet_nbt as nbt
 
 int_struct = struct.Struct("<I")
 
+
 def find_fitting_array_type(
     array: np.ndarray
-) -> Type[Union[nbt.TAG_Int_Array, nbt.TAG_Byte_Array]]:
+) -> Type[Union[nbt.TAG_Int_Array, nbt.TAG_Byte_Array, nbt.TAG_Long_Array]]:
     max_element = array.max()
 
     if max_element <= 127:
         return nbt.TAG_Byte_Array
-    else:
+    elif max_element <= 2_147_483_647:
         return nbt.TAG_Int_Array
+    else:
+        return nbt.TAG_Long_Array
 
 
 def to_flattened_index(
@@ -121,9 +124,9 @@ class Construction:
             )
             return nbt.NBTFile(_tag)
 
-        magic_num = "construct".encode("utf-8")
+        magic_num = "constrct".encode("utf-8")
         buffer.write(struct.pack(f"<{len(magic_num)}s", magic_num))
-        buffer.write(struct.pack("<B", 1))
+        buffer.write(struct.pack("<B", 0))
 
         section_map = {}
         for (sx, sy, sz), section_data in self.sections.items():
@@ -145,15 +148,7 @@ class Construction:
             range(sx_max + 1), range(sy_max + 1), range(sz_max + 1)
         )
         metadata = nbt.TAG_Compound(
-            {
-                # "index_table": nbt.TAG_Int_Array(
-                #     np.fromiter(
-                #         (section_map.get((x, y, z), 0) for x, y, z in coordinate_iter),
-                #         dtype=int
-                #     )
-                # ),
-                "shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size])
-            }
+            {"shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size])}
         )
 
         index_table = [0] * functools.reduce(lambda v1, v2: v1 * v2, structure_size)
@@ -214,28 +209,14 @@ class Construction:
             buffer = buffer.read()
             fp.close()
 
-        offset = len(buffer)
+        magic_num = buffer[0:8].decode("utf-8")
 
-        def read_from_struct(_buffer: IO, _struct: Union[struct.Struct, str]):
-            nonlocal offset
-
-            if isinstance(_struct, struct.Struct):
-                _value = _struct.unpack_from(buffer, offset - _struct.size)
-            else:
-                _value = struct.unpack_from(
-                    _struct, buffer, offset - struct.calcsize(_struct)
-                )
-
-            return _value
-
-        magic_num = buffer[0:9].decode("utf-8")
-
-        if magic_num != "construct":
+        if magic_num != "constrct":
             raise AssertionError(
-                f'Invalid magic number: expected: "construct", got {magic_num}'
+                f'Invalid magic number: expected: "constrct", got {magic_num}'
             )
 
-        metadata_position = read_from_struct(buffer, int_struct)[0]
+        metadata_position = int_struct.unpack_from(buffer, len(buffer) - int_struct.size)[0]
 
         metadata = nbt.load(
             buffer=buffer[metadata_position : len(buffer) - int_struct.size],
