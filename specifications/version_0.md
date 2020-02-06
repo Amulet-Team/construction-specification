@@ -5,9 +5,9 @@
     <section entry>: TAG_Compound
     <section entry>: TAG_Compound
     <section entry>: TAG_Compound
+    ...
     <metadata>: TAG_Compound
     <metadata start offset>: int
-    ...
 
 ## Section Entry
 Each section entry is a gzip'd TAG_Compound with the following structure:
@@ -31,9 +31,11 @@ In order to reduce size of the construction format, the `Blocks` array can eithe
 or a `TAG_Long_Array` and the value of the `BlocksArrayType` describes which of the two tag types was used by using their 
 Tag ID, which can either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array) or 12 (for TAG_Long_Array)
 
-### Chunk Blocks Array
-The block array for each chunk is a flattened 16x16x16 array with each element being comprised of the amount of bytes indicated in the chunk's entry header.
-Each element within this array is an index into the block palette.
+### Blocks Array
+The block array for each chunk is a flattened 16x16x16 array with each element being an index into the block palette.
+
+### Entities and TileEntities
+Entities and TileEntities are contained in a `TAG_List` with each element being a `TAG_Compound` of the entire NBT data associated with the given Entity/TileEntity
 
 ## Metadata
 The metadata for the construction is a gzip'd TAG_Compound laid out in the following format:
