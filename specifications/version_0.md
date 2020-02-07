@@ -1,13 +1,13 @@
 # Construction Format Specification (Version 0)
 
     <magic number>: UTF-8 char array of value "constrct" (8 bytes)
-    <format version>: byte
-    <section entry>: TAG_Compound
+    <format version>: byte - 0 for this version format
+    <section entry>: TAG_Compound - one or more sequential section entries
     <section entry>: TAG_Compound
     <section entry>: TAG_Compound
     ...
-    <metadata>: TAG_Compound
-    <metadata start offset>: int
+    <metadata>: TAG_Compound - data about the construction file
+    <metadata start offset>: int - offset from the start of the file to the start of the metadata entry
 
 ## Section Entry
 Each section entry is a gzip'd TAG_Compound with the following structure:
