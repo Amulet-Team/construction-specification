@@ -13,22 +13,22 @@
 Each section entry is a gzip'd TAG_Compound with the following structure:
 
     TAG_Compound({
-        "Entities": TAG_List([
+        "entities": TAG_List([
             TAG_Compound({...}),
             TAG_Compound({...}),
             ...
         ]),
-        "TileEntities": TAG_List([
+        "tile_entities": TAG_List([
             TAG_Compound({...}),
             TAG_Compound({...}),
             ...
         ]),
-        "BlocksArrayType": TAG_Byte(),
-        "Blocks": <See below>
+        "blocks_array_type": TAG_Byte(),
+        "blocks": <See below>
     })
 
-In order to reduce size of the construction format, the `Blocks` array can either be a `TAG_Byte_Array`, a `TAG_Int_Array`,
-or a `TAG_Long_Array` and the value of the `BlocksArrayType` describes which of the two tag types was used by using their 
+In order to reduce size of the construction format, the `blocks` array can either be a `TAG_Byte_Array`, a `TAG_Int_Array`,
+or a `TAG_Long_Array` and the value of the `blocks_array_type` describes which of the two tag types was used by using their 
 Tag ID, which can either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array) or 12 (for TAG_Long_Array)
 
 ### Blocks Array
@@ -51,6 +51,11 @@ The metadata for the construction is a gzip'd TAG_Compound laid out in the follo
             TAG_Compound(<block entry>),
             TAG_Compound(<block entry>),
             ...
+        ]),
+        "section_shape": TAG_List([
+            TAG_Byte(),
+            TAG_Byte(),
+            TAG_Byte()
         ])
     })
     
@@ -80,3 +85,8 @@ The layout for a palette entry is the following:
         ])
     })
 
+### Section Shape
+The `section_shape` is a TAG_List that describes the expected shape of each section in the construction. Each
+section of the construction will have a flattened `blocks` array that when reshaped should match the `section_shape`
+dimensions. While different construction files can have different shape values, the section dimension shape should match
+the shape described by the tag and be uniform across sections of a single construction file. 

@@ -13,7 +13,7 @@ from amulet.api import Block
 from .construction import Construction
 
 REMOVE_TEST_GENERATED_FILES = True
-RUN_STRESS_TEST = True
+RUN_STRESS_TEST = False
 
 
 class MockedChunk:
@@ -58,6 +58,27 @@ class ConstructionTestCase(unittest.TestCase):
         files_to_remove = glob.iglob("*.construction")
         for f in files_to_remove:
             os.remove(f)
+
+    def test_non_cube_sections(self):
+
+        block_layout = np.zeros((8, 16, 8), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        mocked_section = MockedChunk(0, 0, 0, block_layout, [], [])
+
+        def _iter():
+            yield mocked_section
+
+        construct_1 = Construction.create_from(_iter(), self.small_block_palette, section_shape=(8, 16, 8))
+        self.assertEqual(mocked_section, construct_1.sections[(0, 0, 0)])
+        construct_1.save("test_non_cube_sections.construction")
+
+        construct_2 = Construction.load("test_non_cube_sections.construction")
+        self.assertEqual(mocked_section, construct_2.sections[(0, 0, 0)])
+        self.assertEqual(construct_1, construct_2)
+
+
 
     def test_construction_creation_1(self):
 

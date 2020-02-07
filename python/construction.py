@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import io
 import itertools
+from math import log2, ceil
 from typing import Tuple, Union, IO, Type
 
 import struct
@@ -79,9 +80,10 @@ class Construction:
                 and self.tile_entities == other.tile_entities
             )
 
-    def __init__(self, sections, block_palette):
+    def __init__(self, sections, block_palette, section_shape):
         self.sections = sections
         self.block_palette = block_palette
+        self.section_shape = section_shape
 
     def __eq__(self, other):
         if not isinstance(other, Construction):
@@ -92,17 +94,27 @@ class Construction:
         )
 
     @classmethod
-    def create_from(cls, iterable, palette) -> Construction:
+    def create_from(
+        cls, iterable, palette, section_shape: Tuple[int, int, int] = (16, 16, 16)
+    ) -> Construction:
         sections = {}
         for section in iterable:
             if isinstance(section, cls.ConstructionSection):
+                if section.blocks.shape != section_shape:
+                    raise ValueError(
+                        f"Section at {section.sx, section.sy, section.sz} does not have a shape of {section_shape}"
+                    )
                 sections[(section.sx, section.sy, section.sz)] = section
             else:
                 sx, sy, sz = section.sx, section.sy, section.sz
+                if section.blocks.shape != section_shape:
+                    raise ValueError(
+                        f"Section at {section.sx, section.sy, section.sz} does not have a shape of {section_shape}"
+                    )
                 sections[(sx, sy, sz)] = cls.ConstructionSection(
                     sx, sy, sz, section.blocks, section.entities, section.tile_entities
                 )
-        return cls(sections, palette)
+        return cls(sections, palette, section_shape)
 
     def save(self, filename: str = None, buffer: IO = None):
         if filename is None and buffer is None:
@@ -112,14 +124,18 @@ class Construction:
             buffer = open(filename, "wb+")
 
         def generate_section_entry(_section: Construction.ConstructionSection):
+            if _section.blocks.shape != self.section_shape:
+                raise ValueError(
+                    f"Section at {_section.sx, _section.sy, _section.sz} does not have a shape of {self.section_shape}"
+                )
             flattened_array = _section.blocks.ravel()
             array_type = find_fitting_array_type(flattened_array)
             _tag = nbt.TAG_Compound(
                 {
-                    "Entities": nbt.TAG_List(_section.entities),
-                    "TileEntities": nbt.TAG_List(_section.tile_entities),
-                    "Blocks": array_type(flattened_array),
-                    "BlocksArrayType": nbt.TAG_Byte(array_type().tag_id),
+                    "entities": nbt.TAG_List(_section.entities),
+                    "tile_entities": nbt.TAG_List(_section.tile_entities),
+                    "blocks": array_type(flattened_array),
+                    "blocks_array_type": nbt.TAG_Byte(array_type().tag_id),
                 }
             )
             return nbt.NBTFile(_tag)
@@ -148,7 +164,12 @@ class Construction:
             range(sx_max + 1), range(sy_max + 1), range(sz_max + 1)
         )
         metadata = nbt.TAG_Compound(
-            {"shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size])}
+            {
+                "shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size]),
+                "section_shape": nbt.TAG_List(
+                    [nbt.TAG_Byte(ceil(log2(v))) for v in self.section_shape]
+                ),
+            }
         )
 
         index_table = [0] * functools.reduce(lambda v1, v2: v1 * v2, structure_size)
@@ -216,7 +237,9 @@ class Construction:
                 f'Invalid magic number: expected: "constrct", got {magic_num}'
             )
 
-        metadata_position = int_struct.unpack_from(buffer, len(buffer) - int_struct.size)[0]
+        metadata_position = int_struct.unpack_from(
+            buffer, len(buffer) - int_struct.size
+        )[0]
 
         metadata = nbt.load(
             buffer=buffer[metadata_position : len(buffer) - int_struct.size],
@@ -250,6 +273,7 @@ class Construction:
             block_palette[block_index] = resulting_block
 
         structure_shape = tuple(map(lambda t: t.value, metadata["shape"]))
+        section_shape = tuple(map(lambda t: 2 ** t.value, metadata["section_shape"]))
 
         def section_iter():
             for i, index_value in enumerate(metadata["index_table"].value):
@@ -269,9 +293,11 @@ class Construction:
                     x,
                     y,
                     z,
-                    np.reshape(nbt_obj["Blocks"].value, (16, 16, 16)),
-                    nbt_obj["Entities"].value,
-                    nbt_obj["TileEntities"].value,
+                    np.reshape(nbt_obj["blocks"].value, section_shape),
+                    nbt_obj["entities"].value,
+                    nbt_obj["tile_entities"].value,
                 )
 
-        return cls.create_from(section_iter(), block_palette)
+        return cls.create_from(
+            section_iter(), block_palette, section_shape=section_shape
+        )
