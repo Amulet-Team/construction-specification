@@ -80,10 +80,12 @@ class Construction:
                 and self.tile_entities == other.tile_entities
             )
 
-    def __init__(self, sections, block_palette, section_shape):
+    def __init__(self, sections, block_palette, section_shape, source_edition_name: str, source_version: Tuple[int, int, int]):
         self.sections = sections
         self.block_palette = block_palette
         self.section_shape = section_shape
+        self.source_edition = source_edition_name
+        self.source_version = source_version
 
     def __eq__(self, other):
         if not isinstance(other, Construction):
@@ -95,7 +97,7 @@ class Construction:
 
     @classmethod
     def create_from(
-        cls, iterable, palette, section_shape: Tuple[int, int, int] = (16, 16, 16)
+        cls, iterable, palette, edition_name: str, edition_version: Tuple[int, int, int], section_shape: Tuple[int, int, int] = (16, 16, 16)
     ) -> Construction:
         sections = {}
         for section in iterable:
@@ -114,7 +116,7 @@ class Construction:
                 sections[(sx, sy, sz)] = cls.ConstructionSection(
                     sx, sy, sz, section.blocks, section.entities, section.tile_entities
                 )
-        return cls(sections, palette, section_shape)
+        return cls(sections, palette, section_shape, edition_name, edition_version)
 
     def save(self, filename: str = None, buffer: IO = None):
         if filename is None and buffer is None:
@@ -165,10 +167,16 @@ class Construction:
         )
         metadata = nbt.TAG_Compound(
             {
-                "shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size]),
+                "construction_shape": nbt.TAG_List([nbt.TAG_Int(v) for v in structure_size]),
                 "section_shape": nbt.TAG_List(
                     [nbt.TAG_Byte(ceil(log2(v))) for v in self.section_shape]
                 ),
+                "export_version": nbt.TAG_Compound({
+                    "edition": nbt.TAG_String(self.source_edition),
+                    "version": nbt.TAG_List([
+                        nbt.TAG_Int(v) for v in self.source_version
+                    ])
+                })
             }
         )
 
@@ -246,6 +254,13 @@ class Construction:
             compressed=True,
         )
 
+        try:
+            edition_name = metadata["export_version"]["edition"].value
+            edition_version = tuple(map(lambda v: v.value, metadata["export_version"]["version"]))
+        except KeyError as e:
+            raise AssertionError(f"Missing export version identifying key \"{e.args[0]}\"")
+
+
         block_palette = []
         extra_block_map = {}
         for block_index, block_nbt in enumerate(metadata["block_palette"]):
@@ -272,7 +287,7 @@ class Construction:
 
             block_palette[block_index] = resulting_block
 
-        structure_shape = tuple(map(lambda t: t.value, metadata["shape"]))
+        structure_shape = tuple(map(lambda t: t.value, metadata["construction_shape"]))
         section_shape = tuple(map(lambda t: 2 ** t.value, metadata["section_shape"]))
 
         def section_iter():
@@ -299,5 +314,5 @@ class Construction:
                 )
 
         return cls.create_from(
-            section_iter(), block_palette, section_shape=section_shape
+            section_iter(), block_palette, edition_name, edition_version, section_shape=section_shape
         )

@@ -41,7 +41,7 @@ Entities and TileEntities are contained in a `TAG_List` with each element being 
 The metadata for the construction is a gzip'd TAG_Compound laid out in the following format:
 
     TAG_Compound({
-        "shape": TAG_List([
+        "construction_shape": TAG_List([
             TAG_Int(<x>),
             TAG_Int(<y>),
             TAG_Int(<z>),
@@ -56,15 +56,26 @@ The metadata for the construction is a gzip'd TAG_Compound laid out in the follo
             TAG_Byte(),
             TAG_Byte(),
             TAG_Byte()
-        ])
+        ]),
+        "export_version": TAG_Compound({
+            "edition": TAG_String().
+            "version": TAG_List([
+                TAG_Int(),
+                TAG_Int(),
+                TAG_Int()
+            ])
+        })
     })
     
 ### Shape
-The `shape` tag is used to indicate the number of sections in each of the 3 directions.
+The `construction_shape` tag is used to indicate the shape of the construction file. Each dimension is the number of 
+sections present in that direction. So for example, a value of `[1, 2, 3]` indicates 1 section in the x direction, 2 
+sections along the y direction, and 3 sections along the z direction.
 
 ### Section Index Table
-The `index_table` is a flattened 3D int array in order XYZ with shape ```ceil(structure_shape/chunk_shape)``` that details the offset that each section entry starts at.
-If the element value is 0, then the section does not exist and can be skipped, otherwise the section entry is located at that byte offset to the start of the file.
+The `index_table` is a flattened 3D int array in order XYZ with a shape described by the `construction_shape` that details
+the offset that each section entry starts at. If the element value is 0, then the section does not exist and can be 
+skipped, otherwise the section entry is located at that byte offset to the start of the file.
 
 ### Block Palette and Block Entry
 The `block_palette` is a list of TAG_Compound's with each containing the data for one entry in the block palette. 
@@ -90,3 +101,14 @@ The `section_shape` is a TAG_List that describes the expected shape of each sect
 section of the construction will have a flattened `blocks` array that when reshaped should match the `section_shape`
 dimensions. While different construction files can have different shape values, the section dimension shape should match
 the shape described by the tag and be uniform across sections of a single construction file. 
+
+### Export Version
+In order to properly indicate what format the Block Entries are in, the `export_version` tag describes the original 
+version that the construction was export in. The `edition` tag describes the game edition the construction is from 
+(IE: java, bedrock), and the `version` tag is a 3 element TAG_List that describes the full version number of the game in
+the order of major number, minor number, patch number.
+
+## Boundary Section Behavior
+If the uniform section shape would cause the said section to overflow outside of the desired export area, then the 
+expected behavior of the application using the construction specification would be to ignore any blocks outside of the
+"selection area" and set the value to -1 to mark that the block should be ignored.

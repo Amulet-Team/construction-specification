@@ -15,6 +15,8 @@ from .construction import Construction
 REMOVE_TEST_GENERATED_FILES = True
 RUN_STRESS_TEST = False
 
+TEST_EDITION = 'java'
+TEST_VERSION = (1, 13, 2)
 
 class MockedChunk:
     def __init__(self, sx, sy, sz, blocks, entities, tile_entities):
@@ -70,7 +72,7 @@ class ConstructionTestCase(unittest.TestCase):
         def _iter():
             yield mocked_section
 
-        construct_1 = Construction.create_from(_iter(), self.small_block_palette, section_shape=(8, 16, 8))
+        construct_1 = Construction.create_from(_iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, section_shape=(8, 16, 8))
         self.assertEqual(mocked_section, construct_1.sections[(0, 0, 0)])
         construct_1.save("test_non_cube_sections.construction")
 
@@ -97,7 +99,7 @@ class ConstructionTestCase(unittest.TestCase):
         def _iter():
             yield mocked_chunk
 
-        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette)
+        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION)
         # Since the mocked chunk object has the same attribute names as the internal section object of Construction
         # objects we can just directly compare them to see if it was properly added to the construction
         self.assertEqual(mocked_chunk, construction_obj_1.sections[(0, 0, 0)])
@@ -121,13 +123,11 @@ class ConstructionTestCase(unittest.TestCase):
         block_layout[8:16, 8:16, 0:8] = 7
         block_layout[8:16, 8:16, 8:16] = 8
 
-        mocked_chunk = MockedChunk(0, 0, 0, block_layout, [], [])
-
         def _iter():
             for x, y, z in product(range(50), range(50), range(50)):
                 yield MockedChunk(x, y, z, block_layout, [], [])
 
-        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette)
+        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION)
         # Since the mocked chunk object has the same attribute names as the internal section object of Construction
         # objects we can just directly compare them to see if it was properly added to the construction
         for original_section in _iter():
