@@ -15,8 +15,9 @@ from .construction import Construction
 REMOVE_TEST_GENERATED_FILES = True
 RUN_STRESS_TEST = False
 
-TEST_EDITION = 'java'
+TEST_EDITION = "java"
 TEST_VERSION = (1, 13, 2)
+
 
 class MockedChunk:
     def __init__(self, sx, sy, sz, blocks, entities, tile_entities):
@@ -72,15 +73,19 @@ class ConstructionTestCase(unittest.TestCase):
         def _iter():
             yield mocked_section
 
-        construct_1 = Construction.create_from(_iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, section_shape=(8, 16, 8))
+        construct_1 = Construction.create_from(
+            _iter(),
+            self.small_block_palette,
+            TEST_EDITION,
+            TEST_VERSION,
+            section_shape=(8, 16, 8),
+        )
         self.assertEqual(mocked_section, construct_1.sections[(0, 0, 0)])
         construct_1.save("test_non_cube_sections.construction")
 
         construct_2 = Construction.load("test_non_cube_sections.construction")
         self.assertEqual(mocked_section, construct_2.sections[(0, 0, 0)])
         self.assertEqual(construct_1, construct_2)
-
-
 
     def test_construction_creation_1(self):
 
@@ -99,7 +104,9 @@ class ConstructionTestCase(unittest.TestCase):
         def _iter():
             yield mocked_chunk
 
-        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION)
+        construction_obj_1 = Construction.create_from(
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
         # Since the mocked chunk object has the same attribute names as the internal section object of Construction
         # objects we can just directly compare them to see if it was properly added to the construction
         self.assertEqual(mocked_chunk, construction_obj_1.sections[(0, 0, 0)])
@@ -110,6 +117,142 @@ class ConstructionTestCase(unittest.TestCase):
         )
         self.assertEqual(mocked_chunk, construction_obj_2.sections[(0, 0, 0)])
         self.assertEqual(construction_obj_1, construction_obj_2)
+
+    def test_construction_non_contiguous(self):
+        block_layout = np.zeros((16, 16, 16), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[0:8, 0:8, 8:16] = 2
+        block_layout[0:8, 8:16, 0:8] = 3
+        block_layout[0:8, 8:16, 8:16] = 4
+        block_layout[8:16, 0:8, 0:8] = 5
+        block_layout[8:16, 0:8, 8:16] = 6
+        block_layout[8:16, 8:16, 0:8] = 7
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        def _iter():
+            for section_coords in product(range(3), range(3), range(3)):
+                if section_coords == (1, 1, 1):
+                    continue
+                yield MockedChunk(*section_coords, block_layout, [], [])
+
+        construction_obj_1 = Construction.create_from(
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_1.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+        construction_obj_1.save("test_construction_non_contiguous.construction")
+
+        construction_obj_2 = Construction.load(
+            "test_construction_non_contiguous.construction"
+        )
+
+        self.assertEqual(construction_obj_1, construction_obj_2)
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_2.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+    def test_construction_boundary_1(self):
+        block_layout = np.zeros((16, 16, 16), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[0:8, 0:8, 8:16] = 2
+        block_layout[0:8, 8:16, 0:8] = 3
+        block_layout[0:8, 8:16, 8:16] = 4
+        block_layout[8:16, 0:8, 0:8] = 5
+        block_layout[8:16, 0:8, 8:16] = 6
+        block_layout[8:16, 8:16, 0:8] = 7
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        block_layout_2 = np.zeros((16, 16, 15), dtype=int)
+        block_layout_2[0:8, 0:8, 0:8] = 1
+        block_layout_2[0:8, 0:8, 8:16] = 2
+        block_layout_2[0:8, 8:16, 0:8] = 3
+        block_layout_2[0:8, 8:16, 8:15] = 4
+        block_layout_2[8:16, 0:8, 0:8] = 5
+        block_layout_2[8:16, 0:8, 8:15] = 6
+        block_layout_2[8:16, 8:16, 0:8] = 7
+        block_layout_2[8:16, 8:16, 8:15] = 8
+
+        block_layout_3 = np.zeros((15, 16, 16), dtype=int)
+        block_layout_3[0:8, 0:8, 0:8] = 1
+        block_layout_3[0:8, 0:8, 8:16] = 2
+        block_layout_3[0:8, 8:16, 0:8] = 3
+        block_layout_3[0:8, 8:16, 8:16] = 4
+        block_layout_3[8:15, 0:8, 0:8] = 5
+        block_layout_3[8:15, 0:8, 8:16] = 6
+        block_layout_3[8:15, 8:16, 0:8] = 7
+        block_layout_3[8:15, 8:16, 8:16] = 8
+
+        block_layout_4 = np.zeros((15, 16, 15), dtype=int)
+        block_layout_4[0:8, 0:8, 0:8] = 1
+        block_layout_4[0:8, 0:8, 8:15] = 2
+        block_layout_4[0:8, 8:16, 0:8] = 3
+        block_layout_4[0:8, 8:16, 8:15] = 4
+        block_layout_4[8:15, 0:8, 0:8] = 5
+        block_layout_4[8:15, 0:8, 8:15] = 6
+        block_layout_4[8:15, 8:16, 0:8] = 7
+        block_layout_4[8:15, 8:16, 8:15] = 8
+
+        def _iter():
+            for section_coords in product(range(3), range(1), range(3)):
+                if section_coords[0] == 2 and section_coords[2] == 2:
+                    yield MockedChunk(*section_coords, block_layout_4, [], [])
+                elif section_coords[0] == 2:
+                    yield MockedChunk(*section_coords, block_layout_3, [], [])
+                elif section_coords[2] == 2:
+                    yield MockedChunk(*section_coords, block_layout_2, [], [])
+                else:
+                    yield MockedChunk(*section_coords, block_layout, [], [])
+
+        sections = {}
+
+        def _iter_wrapper(__iter):
+            nonlocal sections
+            for item in __iter:
+                sections[(item.sx, item.sy, item.sz)] = item
+                yield item
+
+        construction_obj_1 = Construction.create_from(
+            _iter_wrapper(_iter()), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
+
+        for section_coords, section in sections.items():
+            self.assertEqual(
+                section,
+                construction_obj_1.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+        construction_obj_1.save("test_construction_boundary_1.construction")
+
+        construction_obj_2 = Construction.load(
+            "test_construction_boundary_1.construction"
+        )
+
+        self.assertEqual(construction_obj_1, construction_obj_2)
+        for section_coords, section in sections.items():
+            self.assertEqual(
+                section,
+                construction_obj_2.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
 
     @unittest.skipUnless(RUN_STRESS_TEST, "Stress tests not enabled")
     def test_construction_creation_2(self):
@@ -127,9 +270,9 @@ class ConstructionTestCase(unittest.TestCase):
             for x, y, z in product(range(50), range(50), range(50)):
                 yield MockedChunk(x, y, z, block_layout, [], [])
 
-        construction_obj_1 = Construction.create_from(_iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION)
-        # Since the mocked chunk object has the same attribute names as the internal section object of Construction
-        # objects we can just directly compare them to see if it was properly added to the construction
+        construction_obj_1 = Construction.create_from(
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
         for original_section in _iter():
             section_coords = (
                 original_section.sx,
