@@ -47,15 +47,11 @@ The metadata for the construction is a gzip'd TAG_Compound laid out in the follo
             TAG_Int(<z>),
         ]),
         "index_table": TAG_Int_Array(),
+        "section_shape_table": TAG_Int_Array(),
         "block_palette": TAG_List([
             TAG_Compound(<block entry>),
             TAG_Compound(<block entry>),
             ...
-        ]),
-        "section_shape": TAG_List([
-            TAG_Byte(),
-            TAG_Byte(),
-            TAG_Byte()
         ]),
         "export_version": TAG_Compound({
             "edition": TAG_String().
@@ -77,6 +73,24 @@ The `index_table` is a flattened 3D int array in order XYZ with a shape describe
 the offset that each section entry starts at. If the element value is 0, then the section does not exist and can be 
 skipped, otherwise the section entry is located at that byte offset to the start of the file.
 
+### Section Shape Table
+Since sections of a construction can be varying shapes, the `section_shape_table` stores the dimensions of each section
+in this lookup table. Each entry uses the last 3 bytes of a 4 byte int, with the pack/unpack order being XYZ, and should 
+pack/unpack the values in an equivalent manner to:
+```python
+def pack_shape(shape: Tuple[int, int, int]) -> int:
+    if any(map(lambda i: i > 16 or i <= 0, shape)):
+        raise ValueError("All elements of packed_shape must be between 1 (inclusive) and 16 (inclusive)")
+    return (shape[0] << 10) | (shape[1] << 5) | shape[2]
+
+
+def unpack_shape(packed_shape) -> Tuple[int, int, int]:
+    return (packed_shape >> 10) & 0x1F, (packed_shape >> 5) & 0x1F, packed_shape & 0x1F
+```
+The index of each element matches up with the same index used in the `index_table` tag. The shape of any given section 
+should not exceed 16 blocks and should be greater or equal to 1 blocks in any dimension. If a element has a value of 0, 
+then the section can be considered to not exist (the same behaviour as a 0 in the `index_table`).
+
 ### Block Palette and Block Entry
 The `block_palette` is a list of TAG_Compound's with each containing the data for one entry in the block palette. 
 The layout for a palette entry is the following:
@@ -95,12 +109,6 @@ The layout for a palette entry is the following:
             ...
         ])
     })
-
-### Section Shape
-The `section_shape` is a TAG_List that describes the expected shape of each section in the construction. Each
-section of the construction will have a flattened `blocks` array that when reshaped should match the `section_shape`
-dimensions. While different construction files can have different shape values, the section dimension shape should match
-the shape described by the tag and be uniform across sections of a single construction file. 
 
 ### Export Version
 In order to properly indicate what format the Block Entries are in, the `export_version` tag describes the original 

@@ -8,7 +8,7 @@ from itertools import product
 
 import numpy as np
 
-from amulet.api import Block
+from amulet.api import blockstate_to_block
 
 from .construction import Construction
 
@@ -41,18 +41,15 @@ class MockedChunk:
 
 class ConstructionTestCase(unittest.TestCase):
     small_block_palette = [
-        Block("minecraft:air"),
-        Block("minecraft:stone"),
-        Block("minecraft:oak_planks"),
-        Block("minecraft:diamond_block"),
-        Block("minecraft:dirt"),
-        Block("minecraft:lime_concrete"),
-        Block("minecraft:orange_concrete"),
-        Block("minecraft:quartz_block"),
-        Block(
-            "minecraft:stone",
-            extra_blocks=Block("minecraft:damaged_anvil[facing=south]"),
-        ),
+        blockstate_to_block("minecraft:air"),
+        blockstate_to_block("minecraft:stone"),
+        blockstate_to_block("minecraft:oak_planks"),
+        blockstate_to_block("minecraft:diamond_block"),
+        blockstate_to_block("minecraft:dirt"),
+        blockstate_to_block("minecraft:lime_concrete"),
+        blockstate_to_block("minecraft:orange_concrete"),
+        blockstate_to_block("minecraft:quartz_block"),
+        blockstate_to_block("minecraft:stone") + blockstate_to_block("minecraft:damaged_anvil[facing=south]"),
     ]
 
     def tearDown(self) -> None:
@@ -77,8 +74,7 @@ class ConstructionTestCase(unittest.TestCase):
             _iter(),
             self.small_block_palette,
             TEST_EDITION,
-            TEST_VERSION,
-            section_shape=(8, 16, 8),
+            TEST_VERSION
         )
         self.assertEqual(mocked_section, construct_1.sections[(0, 0, 0)])
         construct_1.save("test_non_cube_sections.construction")
@@ -118,7 +114,7 @@ class ConstructionTestCase(unittest.TestCase):
         self.assertEqual(mocked_chunk, construction_obj_2.sections[(0, 0, 0)])
         self.assertEqual(construction_obj_1, construction_obj_2)
 
-    def test_construction_non_contiguous(self):
+    def test_construction_non_contiguous_1(self):
         block_layout = np.zeros((16, 16, 16), dtype=int)
         block_layout[0:8, 0:8, 0:8] = 1
         block_layout[0:8, 0:8, 8:16] = 2
@@ -150,10 +146,61 @@ class ConstructionTestCase(unittest.TestCase):
                 f"Sections as {section_coords} are not equal",
             )
 
-        construction_obj_1.save("test_construction_non_contiguous.construction")
+        construction_obj_1.save("test_construction_non_contiguous_1.construction")
 
         construction_obj_2 = Construction.load(
-            "test_construction_non_contiguous.construction"
+            "test_construction_non_contiguous_1.construction"
+        )
+
+        self.assertEqual(construction_obj_1, construction_obj_2)
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_2.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+    def test_construction_non_contiguous_2(self):
+        block_layout = np.zeros((16, 16, 16), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[0:8, 0:8, 8:16] = 2
+        block_layout[0:8, 8:16, 0:8] = 3
+        block_layout[0:8, 8:16, 8:16] = 4
+        block_layout[8:16, 0:8, 0:8] = 5
+        block_layout[8:16, 0:8, 8:16] = 6
+        block_layout[8:16, 8:16, 0:8] = 7
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        def _iter():
+            for section_coords in product(range(3), range(3), range(3)):
+                if 1 in section_coords:
+                    continue
+                yield MockedChunk(*section_coords, block_layout, [], [])
+
+        construction_obj_1 = Construction.create_from(
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_1.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+        construction_obj_1.save("test_construction_non_contiguous_2.construction")
+
+        construction_obj_2 = Construction.load(
+            "test_construction_non_contiguous_2.construction"
         )
 
         self.assertEqual(construction_obj_1, construction_obj_2)
@@ -180,7 +227,7 @@ class ConstructionTestCase(unittest.TestCase):
         block_layout[8:16, 8:16, 0:8] = 7
         block_layout[8:16, 8:16, 8:16] = 8
 
-        block_layout_2 = np.zeros((16, 16, 15), dtype=int)
+        block_layout_2 = np.zeros((16, 16, 16), dtype=int)
         block_layout_2[0:8, 0:8, 0:8] = 1
         block_layout_2[0:8, 0:8, 8:16] = 2
         block_layout_2[0:8, 8:16, 0:8] = 3
@@ -190,7 +237,7 @@ class ConstructionTestCase(unittest.TestCase):
         block_layout_2[8:16, 8:16, 0:8] = 7
         block_layout_2[8:16, 8:16, 8:15] = 8
 
-        block_layout_3 = np.zeros((15, 16, 16), dtype=int)
+        block_layout_3 = np.zeros((16, 16, 16), dtype=int)
         block_layout_3[0:8, 0:8, 0:8] = 1
         block_layout_3[0:8, 0:8, 8:16] = 2
         block_layout_3[0:8, 8:16, 0:8] = 3
@@ -200,7 +247,7 @@ class ConstructionTestCase(unittest.TestCase):
         block_layout_3[8:15, 8:16, 0:8] = 7
         block_layout_3[8:15, 8:16, 8:16] = 8
 
-        block_layout_4 = np.zeros((15, 16, 15), dtype=int)
+        block_layout_4 = np.zeros((16, 16, 16), dtype=int)
         block_layout_4[0:8, 0:8, 0:8] = 1
         block_layout_4[0:8, 0:8, 8:15] = 2
         block_layout_4[0:8, 8:16, 0:8] = 3
