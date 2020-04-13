@@ -44,7 +44,7 @@ Entities and TileEntities are contained in a `TAG_List` with each element being 
 ## Section Table
 ### Section Table Entry
 Each section entry also has a corresponding entry in the section that includes information about the section, such as
-lower bound coordinates of the section, the shape of the section, the starting byte position of the [section data](#Section Data) 
+lower bound coordinates of the section, the shape of the section, the starting byte position of the [section data](#Section-Data) 
 in the file, and the length of the corresponding section data.
 
 This information is encoded in a sequence of bytes in little endian format of `<IIIBBBII` (where `I` denotes an unsigned 
@@ -100,12 +100,12 @@ of the construction. Since construction section coordinates are saved in relativ
 back to absolute coordinates for anything that would require knowledge of the original absolute coordinates.
 
 ### Section Table Position
-Stores the byte position where the [Section Table](#Section Table) begins in the file
+Stores the byte position where the [Section Table](#Section-Table) begins in the file
 
 ### Section Table Length
-Stores the length of the [Section Table](#Section Table) in bytes. Dividing this value by 23 (the byte length of a 
+Stores the length of the [Section Table](#Section-Table) in bytes. Dividing this value by 23 (the byte length of a 
 section entry) gives the total number of sections in the table (may be less than or equal to the product of the dimensions
-from the [Construction Shape](#Construction Shape)) 
+from the [Construction Shape](#Construction-Shape)) 
 
 ### Block Palette and Block Entry
 The `block_palette` is a list of TAG_Compound's with each containing the data for one entry in the block palette. 
