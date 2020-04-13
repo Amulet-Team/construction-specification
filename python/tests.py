@@ -10,7 +10,7 @@ import numpy as np
 
 from amulet.api import blockstate_to_block
 
-from .construction import Construction
+from python.construction import Construction
 
 REMOVE_TEST_GENERATED_FILES = True
 RUN_STRESS_TEST = False
@@ -357,6 +357,90 @@ class ConstructionTestCase(unittest.TestCase):
 
         print(f"Saving Took: {save_end - save_start:02.4f} seconds")
         print(f"Loading Took: {load_end - load_start:02.4f} seconds")
+
+    def test_construction_creation_3(self):
+
+        block_layout = np.zeros((16, 16, 16), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[0:8, 0:8, 8:16] = 2
+        block_layout[0:8, 8:16, 0:8] = 3
+        block_layout[0:8, 8:16, 8:16] = 4
+        block_layout[8:16, 0:8, 0:8] = 5
+        block_layout[8:16, 0:8, 8:16] = 6
+        block_layout[8:16, 8:16, 0:8] = 7
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        mocked_chunk = MockedChunk(2, 2, 2, block_layout, [], [])
+
+        def _iter():
+            yield mocked_chunk
+
+        construction_obj_1 = Construction.create_from(
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
+        # Since the mocked chunk object has the same attribute names as the internal section object of Construction
+        # objects we can just directly compare them to see if it was properly added to the construction
+        self.assertEqual(1, len(construction_obj_1.sections))
+        self.assertEqual(mocked_chunk, construction_obj_1.sections[(2, 2, 2)])
+        construction_obj_1.save("test_construction_creation_1.construction")
+
+        construction_obj_2 = Construction.load(
+            "test_construction_creation_1.construction", load_as_relative=False
+        )
+        self.assertEqual(1, len(construction_obj_2.sections))
+        self.assertEqual(mocked_chunk, construction_obj_2.sections[(2, 2, 2)])
+        self.assertEqual(construction_obj_1, construction_obj_2)
+
+    def test_stacking(self):
+        block_layout = np.zeros((16, 16, 16), dtype=int)
+        block_layout[0:8, 0:8, 0:8] = 1
+        block_layout[0:8, 0:8, 8:16] = 2
+        block_layout[0:8, 8:16, 0:8] = 3
+        block_layout[0:8, 8:16, 8:16] = 4
+        block_layout[8:16, 0:8, 0:8] = 5
+        block_layout[8:16, 0:8, 8:16] = 6
+        block_layout[8:16, 8:16, 0:8] = 7
+        block_layout[8:16, 8:16, 8:16] = 8
+
+        def _iter():
+            for section_coords in product(range(1), range(3), range(1)):
+                #if section_coords[1] == 1:
+                #    continue
+                yield MockedChunk(*section_coords, block_layout, [], [])
+
+        construction_obj_1 = Construction.create_from(
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+        )
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_1.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
+
+        construction_obj_1.save("test_stacking.construction")
+
+        construction_obj_2 = Construction.load(
+            "test_stacking.construction"
+        )
+
+        self.assertEqual(construction_obj_1, construction_obj_2)
+        for original_section in _iter():
+            section_coords = (
+                original_section.sx,
+                original_section.sy,
+                original_section.sz,
+            )
+            self.assertEqual(
+                original_section,
+                construction_obj_2.sections[section_coords],
+                f"Sections as {section_coords} are not equal",
+            )
 
 
 if __name__ == "__main__":
