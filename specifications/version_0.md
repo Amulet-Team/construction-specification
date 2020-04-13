@@ -12,6 +12,7 @@
     ...
     <metadata>: TAG_Compound - data about the construction file
     <metadata start offset>: int - offset from the start of the file to the start of the metadata entry
+    <magic number>: UTF-8 char array of value "constrct" (8 bytes) (Verifies that the file was saved correctly)
 
 ## Section Data
 Each section entry is a gzip'd TAG_Compound with the following structure:

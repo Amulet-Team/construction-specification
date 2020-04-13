@@ -14,13 +14,12 @@ import numpy as np
 
 INT_STRUCT = struct.Struct("<I")
 SECTION_ENTRY_STRUCT = struct.Struct("<IIIBBBII")
-print(SECTION_ENTRY_STRUCT.size)
 
 
 def find_fitting_array_type(
     array: np.ndarray
 ) -> Type[Union[nbt.TAG_Int_Array, nbt.TAG_Byte_Array, nbt.TAG_Long_Array]]:
-    max_element = array.max(0)
+    max_element = array.max(initial=0)
 
     if max_element <= 127:
         return nbt.TAG_Byte_Array
@@ -248,6 +247,7 @@ class Construction:
         )
         buffer.write(metadata_buffer.getvalue())
         buffer.write(INT_STRUCT.pack(position))
+        buffer.write(struct.pack(f"<{len(magic_num)}s", magic_num))
 
         buffer.close()
 
@@ -257,14 +257,16 @@ class Construction:
         if filename is not None:
             buffer = open(filename, "rb")
 
-        magic_num = buffer.read(8).decode("utf-8")
+        magic_num_1 = buffer.read(8).decode("utf-8")
+        buffer.seek(-8, os.SEEK_END)
+        magic_num_2 = buffer.read(8).decode("utf-8")
 
-        if magic_num != "constrct":
+        if magic_num_1 != "constrct" or magic_num_2 != "constrct":
             raise AssertionError(
-                f'Invalid magic number: expected: "constrct", got {magic_num}'
+                f'Invalid magic number: expected: "constrct", got {magic_num_1} at the beginning and {magic_num_2} at the end of the buffer'
             )
 
-        buffer.seek(0, os.SEEK_END)
+        buffer.seek(-8, os.SEEK_END)
         buffer_size = buffer.tell()
         buffer.seek(buffer_size - INT_STRUCT.size)
         metadata_position = INT_STRUCT.unpack(buffer.read(INT_STRUCT.size))[0]
