@@ -18,3 +18,11 @@ The overall structure of the file is as follows:
 2) Skip to the end of the file and read the final `magic number`. If the value does not equal `constrct` the file is invalid (most likely only half saved)
 3) Read the `metadata start offset` which will give you the offset to the start of `metadata`
 4) Skip to the byte offset and read the metadata entry. This contains the offsets to each of the section data entries in the section data table
+
+# Writing
+
+1) Write the construction header
+2) Write each section data entry - keeping track of the locations where each exists in the file
+3) Write the metadata
+4) Write the offset to the start of the metadata
+5) Write the magic number
