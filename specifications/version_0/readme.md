@@ -19,7 +19,7 @@ The overall structure of the file is as follows:
 3) Read the `metadata start offset` which will give you the offset to the start of `metadata`
 4) Skip to the byte offset and read the metadata entry. This contains the offsets to each of the section data entries in the section data table
 
-# Writing
+## Writing
 
 1) Write the construction header
 2) Write each section data entry - keeping track of the locations where each exists in the file
