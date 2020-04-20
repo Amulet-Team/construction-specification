@@ -38,7 +38,7 @@ Each represents the following
 
 - `III`: The X, Y, and Z block coordinates of the section
 - `BBB`: The block shape of the section in X, Y, Z order
-- `I`: The starting byte of the section data entry in the file
+- `I`: The starting byte of the [section data entry](section_data_table.md#section-data-entry) in the file
 - `I`: The byte length of the section data entry
 
 
