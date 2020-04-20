@@ -13,7 +13,7 @@ In the `/specifications/` directory, each version and the associated format info
 specification is outline in each version's markdown file following the conventions `version_{version number}.md`
 
 Current Specification Versions:
- - [Version 0](https://github.com/Podshot/construction-specification/blob/master/specifications/version_0.md)
+ - [Version 0](specifications/version_0/readme.md)
 
 ### Format Libraries
 Libraries for loading and saving construction files are provided in this repository for use in other third-party programs
