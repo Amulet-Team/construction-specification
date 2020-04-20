@@ -4,6 +4,7 @@ The metadata for the construction is a gzip'd TAG_Compound laid out in the follo
     TAG_Compound({
         "selection_boxes": TAG_Int_Array([Nx6]),
         "section_index_table": TAG_Byte_Array([Mx23]),
+        "section_version": TAG_Byte(),
         "export_version": TAG_Compound({
             "edition": TAG_String().
             "version": TAG_List([
@@ -41,6 +42,9 @@ Each represents the following
 - `I`: The starting byte of the [section data entry](section_data_table.md#section-data-entry) in the file
 - `I`: The byte length of the section data entry
 
+## Section Version
+
+This specifies the version number for the format of all the sections data entries contained in the [section data table](section_data_table.md#section-data-table). Currently the only valid value is 0 but this will enable modifying the format in the future.
 
 ## Export Version
 
