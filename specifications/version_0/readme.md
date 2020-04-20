@@ -7,8 +7,8 @@ The overall structure of the file is as follows:
 | Name | Type | Description |
 | :----: | :----: | ----------- |
 | `construction header` | | [Construction Header](specifications#header-format)
-| `section data table` | | [Section data table](section_data_table.readme)
-| `metadata` | TAG_Compound | [Metadata](metadata.readme)
+| `section data table` | | [Section data table](section_data_table.md)
+| `metadata` | TAG_Compound | [Metadata](metadata.md)
 | `metadata start offset` | uint32 | offset from the start of the file to the start of the metadata entry
 | `magic number` | `"constrct"` (8 bytes) UTF-8 char array | (Verifies that the file was saved correctly)
 
