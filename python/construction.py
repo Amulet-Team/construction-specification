@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import os
 import struct
-from typing import Type, Union, Tuple, IO, Dict, List
+from typing import Type, Union, Tuple, IO, Dict, List, Optional
 
 from amulet import Block
 
@@ -69,7 +69,7 @@ class Construction:
         palette,
         source_edition: str,
         source_version: INT_TRIPLET,
-        selection_boxes: List[Tuple[int, int, int, int, int, int]] = None,
+        selection_boxes: Optional[List[Tuple[int, int, int, int, int, int]]] = None,
     ):
         self.sections = sections
         self.palette = palette
@@ -88,7 +88,7 @@ class Construction:
 
     @classmethod
     def create_from(
-        cls, iterable, palette, edition_name, edition_version
+        cls, iterable, palette, edition_name, edition_version, selection_boxes
     ) -> Construction:
         sections = {}
         for section in iterable:
@@ -97,7 +97,7 @@ class Construction:
                 *section_coords, section.blocks, section.entities, section.tile_entities
             )
 
-        return cls(sections, palette, edition_name, edition_version)
+        return cls(sections, palette, edition_name, edition_version, selection_boxes)
 
     def save(self, filename: str = None, buffer: IO = None):
         if filename is None and buffer is None:
@@ -322,9 +322,9 @@ class Construction:
             block_palette[block_index] = resulting_block
 
         selection_boxes = []
-        for box_index in range(0, len(selection_boxes), 6):
+        for box_index in range(0, len(metadata["selection_boxes"]), 6):
             selection_boxes.append(
-                tuple(map(lambda i: selection_boxes[(box_index * 6) + i], range(6)))
+                tuple(map(lambda i: metadata["selection_boxes"].value[(box_index * 6) + i], range(6)))
             )
 
         section_index_table = (
@@ -353,5 +353,5 @@ class Construction:
             buffer.close()
 
         return cls.create_from(
-            section_iter(), block_palette, edition_name, edition_version
+            section_iter(), block_palette, edition_name, edition_version, selection_boxes
         )

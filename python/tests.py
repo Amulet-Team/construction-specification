@@ -72,7 +72,7 @@ class ConstructionTestCase(unittest.TestCase):
             yield mocked_section
 
         construct_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         self.assertEqual(mocked_section, construct_1.sections[(0, 0, 0)])
         construct_1.save("test_non_cube_sections.construction")
@@ -99,7 +99,7 @@ class ConstructionTestCase(unittest.TestCase):
             yield mocked_chunk
 
         construction_obj_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         # Since the mocked chunk object has the same attribute names as the internal section object of Construction
         # objects we can just directly compare them to see if it was properly added to the construction
@@ -130,7 +130,7 @@ class ConstructionTestCase(unittest.TestCase):
                 yield MockedChunk(*section_coords, block_layout, [], [])
 
         construction_obj_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         for original_section in _iter():
             section_coords = (
@@ -181,7 +181,7 @@ class ConstructionTestCase(unittest.TestCase):
                 yield MockedChunk(*section_coords, block_layout, [], [])
 
         construction_obj_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         for original_section in _iter():
             section_coords = (
@@ -275,7 +275,7 @@ class ConstructionTestCase(unittest.TestCase):
                 yield item
 
         construction_obj_1 = Construction.create_from(
-            _iter_wrapper(_iter()), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter_wrapper(_iter()), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
 
         for section_coords, section in sections.items():
@@ -316,7 +316,7 @@ class ConstructionTestCase(unittest.TestCase):
                 yield MockedChunk(x, y, z, block_layout, [], [])
 
         construction_obj_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         for original_section in _iter():
             section_coords = (
@@ -374,7 +374,7 @@ class ConstructionTestCase(unittest.TestCase):
             yield mocked_chunk
 
         construction_obj_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         # Since the mocked chunk object has the same attribute names as the internal section object of Construction
         # objects we can just directly compare them to see if it was properly added to the construction
@@ -383,7 +383,7 @@ class ConstructionTestCase(unittest.TestCase):
         construction_obj_1.save("test_construction_creation_1.construction")
 
         construction_obj_2 = Construction.load(
-            "test_construction_creation_1.construction", load_as_relative=False
+            "test_construction_creation_1.construction"
         )
         self.assertEqual(1, len(construction_obj_2.sections))
         self.assertEqual(mocked_chunk, construction_obj_2.sections[(2, 2, 2)])
@@ -407,7 +407,7 @@ class ConstructionTestCase(unittest.TestCase):
                 yield MockedChunk(*section_coords, block_layout, [], [])
 
         construction_obj_1 = Construction.create_from(
-            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION, None
         )
         for original_section in _iter():
             section_coords = (
