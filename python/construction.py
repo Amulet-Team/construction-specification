@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import io
-import itertools
 import os
 import struct
-from typing import Type, Union, Tuple, IO, Dict
+from typing import Type, Union, Tuple, IO, Dict, List, Optional
 
 from amulet import Block
 
@@ -12,8 +11,10 @@ import amulet_nbt as nbt
 
 import numpy as np
 
-INT_STRUCT = struct.Struct("<I")
-SECTION_ENTRY_STRUCT = struct.Struct("<IIIBBBII")
+INT_TRIPLET = Tuple[int, int, int]
+
+INT_STRUCT = struct.Struct(">I")
+SECTION_ENTRY_STRUCT = struct.Struct(">IIIBBBII")
 
 
 def find_fitting_array_type(
@@ -64,15 +65,17 @@ class ConstructionSection:
 class Construction:
     def __init__(
         self,
-        sections: Dict[Tuple[int, int, int], ConstructionSection],
+        sections: Dict[INT_TRIPLET, ConstructionSection],
         palette,
         source_edition: str,
-        source_version: Tuple[int, int, int],
+        source_version: INT_TRIPLET,
+        selection_boxes: Optional[List[Tuple[int, int, int, int, int, int]]] = None,
     ):
         self.sections = sections
         self.palette = palette
         self.source_edition = source_edition
         self.source_version = source_version
+        self.selection_boxes = selection_boxes
 
     def __eq__(self, other):
         if not isinstance(other, Construction):
@@ -85,7 +88,7 @@ class Construction:
 
     @classmethod
     def create_from(
-        cls, iterable, palette, edition_name, edition_version
+        cls, iterable, palette, edition_name, edition_version, selection_boxes
     ) -> Construction:
         sections = {}
         for section in iterable:
@@ -94,7 +97,7 @@ class Construction:
                 *section_coords, section.blocks, section.entities, section.tile_entities
             )
 
-        return cls(sections, palette, edition_name, edition_version)
+        return cls(sections, palette, edition_name, edition_version, selection_boxes)
 
     def save(self, filename: str = None, buffer: IO = None):
         if filename is None and buffer is None:
@@ -141,8 +144,8 @@ class Construction:
             )
 
         magic_num = "constrct".encode("utf-8")
-        buffer.write(struct.pack(f"<{len(magic_num)}s", magic_num))
-        buffer.write(struct.pack("<B", 0))
+        buffer.write(struct.pack(f">{len(magic_num)}s", magic_num))
+        buffer.write(struct.pack(">B", 0))
 
         section_map = {}
         for section_coords, section_data in self.sections.items():
@@ -174,12 +177,7 @@ class Construction:
 
         metadata = nbt.TAG_Compound(
             {
-                "construction_shape": nbt.TAG_List(
-                    [nbt.TAG_Int(v) for v in structure_size]
-                ),
-                "minimum_structure_coordinates": nbt.TAG_List(
-                    [nbt.TAG_Int(v) for v in min_structure_coords]
-                ),
+                "section_version": nbt.TAG_Byte(0),
                 "export_version": nbt.TAG_Compound(
                     {
                         "edition": nbt.TAG_String(self.source_edition),
@@ -191,32 +189,35 @@ class Construction:
             }
         )
 
-        section_table_position = buffer.tell()
-        metadata["section_table_position"] = nbt.TAG_Long(section_table_position)
+        if self.selection_boxes:
+            selection_boxes = [0] * len(self.selection_boxes) * 6
+            for i, box in enumerate(self.selection_boxes):
+                for index, box_coordinate in enumerate(box):
+                    selection_boxes[(i * 6) + index] = box_coordinate
+        else:
+            selection_boxes = [
+                0,
+                0,
+                0,
+                structure_size[0],
+                structure_size[1],
+                structure_size[2],
+            ]
 
-        section_table_length = 0
-        coordinate_iter = itertools.product(*map(range, structure_size))
-        for coordinates in coordinate_iter:
-            adjusted_coordinates = (
-                sx_min + coordinates[0],
-                sy_min + coordinates[1],
-                sz_min + coordinates[2],
+        metadata["selection_boxes"] = nbt.TAG_Int_Array(selection_boxes)
+
+        section_table = [0] * (len(self.sections) * SECTION_ENTRY_STRUCT.size)
+        for i, coordinates in enumerate(self.sections):
+            section = self.sections[coordinates]
+
+            encoded_bytes = SECTION_ENTRY_STRUCT.pack(
+                *coordinates, *section.blocks.shape, *section_map[coordinates]
             )
+            start_index = i * SECTION_ENTRY_STRUCT.size
+            for byte_pos, byte_value in enumerate(encoded_bytes):
+                section_table[start_index + byte_pos] = byte_value
 
-            if adjusted_coordinates in self.sections:
-                section = self.sections[adjusted_coordinates]
-
-                buffer.write(
-                    SECTION_ENTRY_STRUCT.pack(
-                        *coordinates,
-                        *section.blocks.shape,
-                        *section_map[adjusted_coordinates],
-                    )
-                )
-                section_table_length += 1
-        metadata["section_table_length"] = nbt.TAG_Long(
-            section_table_length * SECTION_ENTRY_STRUCT.size
-        )
+        metadata["section_index_table"] = nbt.TAG_Byte_Array(section_table)
 
         block_palette_nbt = nbt.TAG_List()
         extra_blocks = set()
@@ -247,23 +248,29 @@ class Construction:
         )
         buffer.write(metadata_buffer.getvalue())
         buffer.write(INT_STRUCT.pack(position))
-        buffer.write(struct.pack(f"<{len(magic_num)}s", magic_num))
+        buffer.write(struct.pack(f">{len(magic_num)}s", magic_num))
 
         buffer.close()
 
     @classmethod
-    def load(cls, filename: str = None, buffer: IO = None, load_as_relative=True) -> Construction:
+    def load(cls, filename: str = None, buffer: IO = None) -> Construction:
 
         if filename is not None:
             buffer = open(filename, "rb")
 
         magic_num_1 = buffer.read(8).decode("utf-8")
+        version_num = struct.unpack(">B", buffer.read(1))[0]
         buffer.seek(-8, os.SEEK_END)
         magic_num_2 = buffer.read(8).decode("utf-8")
 
         if magic_num_1 != "constrct" or magic_num_2 != "constrct":
             raise AssertionError(
                 f'Invalid magic number: expected: "constrct", got {magic_num_1} at the beginning and {magic_num_2} at the end of the buffer'
+            )
+
+        if version_num != 0:
+            raise AssertionError(
+                "This wrapper doesn't support any construction version higher than 0"
             )
 
         buffer.seek(-8, os.SEEK_END)
@@ -314,20 +321,21 @@ class Construction:
 
             block_palette[block_index] = resulting_block
 
-        min_sections_coords = tuple(
-            map(lambda t: t.value, metadata["minimum_structure_coordinates"])
+        selection_boxes = []
+        for box_index in range(0, len(metadata["selection_boxes"]), 6):
+            selection_boxes.append(
+                tuple(map(lambda i: metadata["selection_boxes"].value[(box_index * 6) + i], range(6)))
+            )
+
+        section_index_table = (
+            metadata["section_index_table"].value.astype(np.uint8).tolist()
         )
-        section_table_position = metadata["section_table_position"].value
-        section_table_length = metadata["section_table_length"].value
 
         def section_iter():
-            for i in range(section_table_length // SECTION_ENTRY_STRUCT.size):
-                entry_index = section_table_position + (
-                    i * SECTION_ENTRY_STRUCT.size
-                )
-                buffer.seek(entry_index)
+            for i in range(len(section_index_table) // SECTION_ENTRY_STRUCT.size):
+                entry_index = i * SECTION_ENTRY_STRUCT.size
                 sx, sy, sz, shapex, shapey, shapez, position, length = SECTION_ENTRY_STRUCT.unpack(
-                    buffer.read(SECTION_ENTRY_STRUCT.size)
+                    bytes(section_index_table[entry_index : entry_index + 23])
                 )
 
                 buffer.seek(position)
@@ -335,9 +343,9 @@ class Construction:
                 nbt_obj = nbt.load(buffer=buffer.read(length), compressed=True)
 
                 yield ConstructionSection(
-                    sx if load_as_relative else min_sections_coords[0] + sx,
-                    sy if load_as_relative else min_sections_coords[1] + sy,
-                    sz if load_as_relative else min_sections_coords[2] + sz,
+                    sx,
+                    sy,
+                    sz,
                     np.reshape(nbt_obj["blocks"].value, (shapex, shapey, shapez)),
                     nbt_obj["entities"].value,
                     nbt_obj["tile_entities"].value,
@@ -345,5 +353,5 @@ class Construction:
             buffer.close()
 
         return cls.create_from(
-            section_iter(), block_palette, edition_name, edition_version
+            section_iter(), block_palette, edition_name, edition_version, selection_boxes
         )
