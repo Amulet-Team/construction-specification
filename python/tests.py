@@ -49,7 +49,8 @@ class ConstructionTestCase(unittest.TestCase):
         blockstate_to_block("minecraft:lime_concrete"),
         blockstate_to_block("minecraft:orange_concrete"),
         blockstate_to_block("minecraft:quartz_block"),
-        blockstate_to_block("minecraft:stone") + blockstate_to_block("minecraft:damaged_anvil[facing=south]"),
+        blockstate_to_block("minecraft:stone")
+        + blockstate_to_block("minecraft:damaged_anvil[facing=south]"),
     ]
 
     def tearDown(self) -> None:
@@ -71,10 +72,7 @@ class ConstructionTestCase(unittest.TestCase):
             yield mocked_section
 
         construct_1 = Construction.create_from(
-            _iter(),
-            self.small_block_palette,
-            TEST_EDITION,
-            TEST_VERSION
+            _iter(), self.small_block_palette, TEST_EDITION, TEST_VERSION
         )
         self.assertEqual(mocked_section, construct_1.sections[(0, 0, 0)])
         construct_1.save("test_non_cube_sections.construction")
@@ -404,7 +402,7 @@ class ConstructionTestCase(unittest.TestCase):
 
         def _iter():
             for section_coords in product(range(1), range(3), range(1)):
-                #if section_coords[1] == 1:
+                # if section_coords[1] == 1:
                 #    continue
                 yield MockedChunk(*section_coords, block_layout, [], [])
 
@@ -425,9 +423,7 @@ class ConstructionTestCase(unittest.TestCase):
 
         construction_obj_1.save("test_stacking.construction")
 
-        construction_obj_2 = Construction.load(
-            "test_stacking.construction"
-        )
+        construction_obj_2 = Construction.load("test_stacking.construction")
 
         self.assertEqual(construction_obj_1, construction_obj_2)
         for original_section in _iter():
