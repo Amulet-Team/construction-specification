@@ -237,7 +237,7 @@ class ConstructionWriter:
             self._metadata = amulet_nbt.NBTFile(
                 amulet_nbt.TAG_Compound(
                     {
-                        "created_with": "amulet_python_wrapper",
+                        "created_with": amulet_nbt.TAG_String("amulet_python_wrapper"),
                         "selection_boxes": amulet_nbt.TAG_Int_Array([c for box in self._selection_boxes if len(box) == 6 and all(isinstance(c, int) for c in box) for c in box]),
                         "section_version": amulet_nbt.TAG_Byte(self._section_version),
                         "export_version": amulet_nbt.TAG_Compound(
