@@ -98,7 +98,8 @@ class ConstructionReader:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _unpack_palette(self, raw_palette: amulet_nbt.TAG_List) -> List[Block]:
+    @staticmethod
+    def _unpack_palette(raw_palette: amulet_nbt.TAG_List) -> List[Block]:
         block_palette = []
         extra_block_map = {}
         for block_index, block_nbt in enumerate(raw_palette):
@@ -130,15 +131,15 @@ class ConstructionReader:
         """data to be read at init in read mode"""
         magic_num_1 = self._buffer.read(8)
         assert magic_num_1 == magic_num, f'This file is not a construction file.'
-        self._format_version = struct.unpack_from(">B", self._buffer)[0]
+        self._format_version = struct.unpack(">B", self._buffer.read(1))[0]
         if self._format_version == 0:
             self._buffer.seek(-magic_num_len, os.SEEK_END)
             magic_num_2 = self._buffer.read(8)
             assert magic_num_2 == magic_num, 'It looks like this file is corrupt. It probably wasn\'t saved properly'
 
-            self._buffer.seek(-magic_num_len - INT_STRUCT.size)
+            self._buffer.seek(-magic_num_len - INT_STRUCT.size, os.SEEK_END)
             metadata_end = self._buffer.tell()
-            metadata_start = INT_STRUCT.unpack_from(self._buffer)[0]
+            metadata_start = INT_STRUCT.unpack(self._buffer.read(INT_STRUCT.size))[0]
             self._buffer.seek(metadata_start)
 
             metadata = amulet_nbt.load(
@@ -210,7 +211,7 @@ class ConstructionWriter:
         self._source_edition = source_edition
         self._source_version = source_version
 
-        self._selection_boxes = selection_boxes
+        self._selection_boxes = selection_boxes or []
 
         self._metadata: Optional[amulet_nbt.NBTFile] = None
         self._section_index_table: List[Tuple[int, int, int, int, int, int, int, int]] = []
@@ -226,6 +227,7 @@ class ConstructionWriter:
     def _init_write(self):
         """data to be written at init in write mode"""
         self._buffer.write(magic_num)
+        self._buffer.write(struct.pack(">B", self._format_version))
         if self._format_version == 0:
             self._metadata = amulet_nbt.NBTFile(
                 amulet_nbt.TAG_Compound(
@@ -302,7 +304,7 @@ class ConstructionWriter:
             )
             self._metadata["block_palette"] = self._pack_palette()
             self._metadata.save_to(self._buffer)
-            INT_STRUCT.pack_into(self._buffer, 0, metadata_start)
+            self._buffer.write(INT_STRUCT.pack(metadata_start))
             self._buffer.write(magic_num)
         else:
             raise Exception(f"This wrapper doesn\'t support any construction version higher than {max_format_version}")

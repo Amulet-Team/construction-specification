@@ -56,7 +56,7 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionReader("test_non_cube_sections.construction") as construction:
             section = construction.read(0)
 
-        self.assertEquals(section, ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+        self.assertEqual(section, ConstructionSection(min_pos, shape, blocks, entities, block_entities))
 
     @staticmethod
     def _blocks_1() -> Tuple[np.ndarray, Tuple[int, int, int]]:
@@ -84,7 +84,7 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionReader("test_construction_creation_1.construction") as construction:
             section = construction.read(0)
 
-        self.assertEquals(section, ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+        self.assertEqual(section, ConstructionSection(min_pos, shape, blocks, entities, block_entities))
 
     def test_construction_non_contiguous_1(self):
         blocks, shape = self._blocks_1()
@@ -102,7 +102,7 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionReader("test_construction_non_contiguous_1.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
 
-        self.assertEquals(sections, sections2)
+        self.assertEqual(sections, sections2)
 
     def test_construction_non_contiguous_2(self):
         blocks, shape = self._blocks_1()
@@ -120,7 +120,7 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionReader("test_construction_non_contiguous_2.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
 
-        self.assertEquals(sections, sections2)
+        self.assertEqual(sections, sections2)
 
     def test_construction_boundary_1(self):
         blocks, shape = self._blocks_1()
@@ -177,7 +177,7 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionReader("test_construction_boundary_1.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
 
-        self.assertEquals(sections, sections2)
+        self.assertEqual(sections, sections2)
 
     @unittest.skipUnless(RUN_STRESS_TEST, "Stress tests not enabled")
     def test_construction_creation_2(self):
@@ -199,7 +199,7 @@ class ConstructionTestCase(unittest.TestCase):
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
         load_end = time.time()
 
-        self.assertEquals(sections, sections2)
+        self.assertEqual(sections, sections2)
 
         print(f"Saving Took: {save_end - save_start:02.4f} seconds")
         print(f"Loading Took: {load_end - load_start:02.4f} seconds")
@@ -232,7 +232,7 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionReader("test_stacking.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
 
-        self.assertEquals(sections, sections2)
+        self.assertEqual(sections, sections2)
 
 
 if __name__ == "__main__":
