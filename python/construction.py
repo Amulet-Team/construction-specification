@@ -237,6 +237,7 @@ class ConstructionWriter:
             self._metadata = amulet_nbt.NBTFile(
                 amulet_nbt.TAG_Compound(
                     {
+                        "created_with": "amulet_python_wrapper",
                         "selection_boxes": amulet_nbt.TAG_Int_Array([c for box in self._selection_boxes if len(box) == 6 and all(isinstance(c, int) for c in box) for c in box]),
                         "section_version": amulet_nbt.TAG_Byte(self._section_version),
                         "export_version": amulet_nbt.TAG_Compound(
@@ -341,7 +342,7 @@ class ConstructionWriter:
         """section_version==0"""
         ...
 
-    def write(self, *args, **kwargs):
+    def write(self, *args, **_):
         if self._section_version == 0:
             (sx, sy, sz), (shapex, shapey, shapez), blocks, palette, entities, block_entities = args
             position = self._buffer.tell()
