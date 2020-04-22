@@ -16,7 +16,7 @@ Each section data entry is a gzip'd binary TAG_Compound with the following struc
             TAG_Compound({...}),
             ...
         ]),
-        "tile_entities": TAG_List([
+        "block_entities": TAG_List([
             TAG_Compound({...}),
             TAG_Compound({...}),
             ...
@@ -32,5 +32,5 @@ Tag ID, which can either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array) or
 ### Blocks Array
 The block array for each chunk is a flattened array of size specified in the [metadata section index table](metadata.md#section-index-table) with each element being an index into the [block palette](metadata.md#block-palette).
 
-### Entities and TileEntities
-Entities and TileEntities are contained in a `TAG_List` with each element being a `TAG_Compound` of the entire NBT data associated with the given Entity/TileEntity. They are serialised into the format for the version specified in the [metadata](metadata.md#export-version)
+### Entities and BlockEntities
+Entities and BlockEntities are contained in a `TAG_List` with each element being a `TAG_Compound` of the entire NBT data associated with the given Entity/BlockEntity. They are serialised into the format for the version specified in the [metadata](metadata.md#export-version)
