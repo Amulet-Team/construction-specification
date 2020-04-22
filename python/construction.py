@@ -5,8 +5,6 @@ import struct
 from typing import Type, Union, Tuple, IO, List, Optional, overload
 
 from amulet import Block, BlockManager
-from amulet.api.entity import Entity
-from amulet.api.block_entity import BlockEntity
 
 import amulet_nbt
 
@@ -41,8 +39,8 @@ class ConstructionSection:
         min_position: INT_TRIPLET,
         shape: INT_TRIPLET,
         blocks: Optional[numpy.ndarray],
-        entities: List[Entity],
-        block_entities: Optional[List[BlockEntity]],
+        entities: List[amulet_nbt.TAG_Compound],
+        block_entities: Optional[List[amulet_nbt.TAG_Compound]],
     ):
         self.sx, self.sy, self.sz = min_position
         self.shape = shape
@@ -173,12 +171,19 @@ class ConstructionReader:
             sx, sy, sz, shapex, shapey, shapez, position, length = self._section_index_table[section_index]
             self._buffer.seek(position)
             nbt_obj = amulet_nbt.load(buffer=self._buffer.read(length))
+            if nbt_obj["blocks_array_type"].value == -1:
+                blocks = None
+                block_entities = None
+            else:
+                blocks = numpy.reshape(nbt_obj["blocks"].value, (shapex, shapey, shapez))
+                block_entities = nbt_obj["block_entities"].value
+
             return ConstructionSection(
                 (sx, sy, sz),
                 (shapex, shapey, shapez),
-                numpy.reshape(nbt_obj["blocks"].value, (shapex, shapey, shapez)),
+                blocks,
                 nbt_obj["entities"].value,
-                nbt_obj["block_entities"].value,
+                block_entities,
             )
         else:
             raise Exception(f"This wrapper doesn\'t support any construction version higher than {max_format_version}")
@@ -330,8 +335,8 @@ class ConstructionWriter:
         shape: INT_TRIPLET,
         blocks: Optional[numpy.ndarray],
         palette: List[Block],
-        entities: List[Entity],
-        block_entities: Optional[List[BlockEntity]]
+        entities: List[amulet_nbt.TAG_Compound],
+        block_entities: Optional[List[amulet_nbt.TAG_Compound]]
     ):
         """section_version==0"""
         ...
@@ -343,8 +348,7 @@ class ConstructionWriter:
 
             _tag = amulet_nbt.TAG_Compound(
                 {
-                    "entities": amulet_nbt.TAG_List(entities),
-                    "block_entities": amulet_nbt.TAG_List(block_entities)
+                    "entities": amulet_nbt.TAG_List(entities)
                 }
             )
 
@@ -357,6 +361,7 @@ class ConstructionWriter:
                 array_type = self._find_fitting_array_type(flattened_array)
                 _tag["blocks_array_type"] = amulet_nbt.TAG_Byte(array_type().tag_id)
                 _tag["blocks"] = array_type(flattened_array)
+                _tag["block_entities"] = amulet_nbt.TAG_List(block_entities or [])
 
             amulet_nbt.NBTFile(_tag).save_to(self._buffer)
 

@@ -234,6 +234,23 @@ class ConstructionTestCase(unittest.TestCase):
 
         self.assertEqual(sections, sections2)
 
+    def test_empty(self):
+        with ConstructionWriter("test_empty.construction", TEST_EDITION, TEST_VERSION) as construction:
+            pass
+
+        with ConstructionReader("test_empty.construction") as construction:
+            self.assertEqual(0, len(construction.sections))
+
+    def test_section_no_blocks(self):
+        with ConstructionWriter("test_section_no_blocks.construction", TEST_EDITION, TEST_VERSION) as construction:
+            construction.write((0, 0, 0), (16, 16, 16), None, self.small_block_palette, [], None)
+
+        with ConstructionReader("test_section_no_blocks.construction") as construction:
+            self.assertEqual(1, len(construction.sections))
+            section = construction.read(0)
+            self.assertEqual(section.blocks, None)
+            self.assertEqual(section.block_entities, None)
+
 
 if __name__ == "__main__":
     unittest.main()
