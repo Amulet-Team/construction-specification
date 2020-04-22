@@ -2,7 +2,7 @@
 The metadata for the construction is a gzip'd TAG_Compound laid out in the following format:
 
     TAG_Compound({
-        "selection_boxes": TAG_Int_Array([Nx6]),        # optional
+        "selection_boxes": TAG_Int_Array([Nx6]),
         "section_index_table": TAG_Byte_Array([Mx23]),
         "section_version": TAG_Byte(),
         "export_version": TAG_Compound({
