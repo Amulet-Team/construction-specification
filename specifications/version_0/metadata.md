@@ -18,6 +18,7 @@ The metadata for the construction is a gzip'd TAG_Compound laid out in the follo
             TAG_Compound(<block entry>),
             ...
         ]),
+        "created_with": TAG_String()
     })
     
 ## Selection Boxes
@@ -74,3 +75,7 @@ The `block_palette` is a list of TAG_Compound's with each containing the data fo
             ...
         ])
     })
+    
+## Created With
+
+A space for the writing program to identify itself to help with debugging issues.
