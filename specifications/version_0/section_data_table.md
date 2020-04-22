@@ -29,6 +29,8 @@ In order to reduce size of the construction format, the `blocks` array can eithe
 or a `TAG_Long_Array` and the value of the `blocks_array_type` describes which of the two tag types was used by using their 
 Tag ID, which can either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array) or 12 (for TAG_Long_Array)
 
+There is also a special case where this tag equals -1 which means that the `blocks` and `block_entities` tag do not exist. This is useful for storing sections that contain entities but are not populated with block data.
+
 ### Blocks Array
 The block array for each chunk is a flattened array of size specified in the [metadata section index table](metadata.md#section-index-table) with each element being an index into the [block palette](metadata.md#block-palette).
 
