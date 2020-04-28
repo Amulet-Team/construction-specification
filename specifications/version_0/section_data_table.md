@@ -8,6 +8,10 @@ See [metadata's section index table](metadata.md#section-index-table) for how to
 
 A section data entry includes the data contained within a specified volume.
 
+Each volume must fit within a single sub-chunk where a sub-chunk is a 16x16x16 region of blocks with the first alligned with 0,0,0. This means that a section can be at most 16x16x16 blocks however it can be smaller by modifying the minimum coordinates and/or the section shape.
+
+There can be multiple sections per sub-chunk.
+
 Each section data entry is a gzip'd binary TAG_Compound with the following structure:
 
     TAG_Compound({
