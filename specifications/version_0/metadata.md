@@ -38,8 +38,8 @@ The real format of the `section_index_table` is `IIIBBBII` where `I` is a uint32
 
 Each represents the following
 
-- `III`: The X, Y, and Z block coordinates of the section
-- `BBB`: The block shape of the section in X, Y, Z order
+- `III`: The X, Y, and Z block coordinates of the minimum point of the section
+- `BBB`: The shape of the section in blocks in X, Y, Z order
 - `I`: The starting byte of the [section data entry](section_data_table.md#section-data-entry) in the file
 - `I`: The byte length of the section data entry
 
