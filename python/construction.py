@@ -345,6 +345,9 @@ class ConstructionWriter:
     def write(self, *args, **_):
         if self._section_version == 0:
             (sx, sy, sz), (shapex, shapey, shapez), blocks, palette, entities, block_entities = args
+            for point, shape in zip((sx, sy, sz), (shapex, shapey, shapez)):
+                assert shape >= 0, 'Shape must be positive'
+                assert point + shape <= (((point >> 4)+1) << 4), 'Section does not fit in a sub-chunk'
             position = self._buffer.tell()
 
             _tag = amulet_nbt.TAG_Compound(
