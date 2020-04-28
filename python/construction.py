@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import struct
-from typing import Type, Union, Tuple, IO, List, Optional, overload
+from typing import Type, Union, Tuple, IO, List, Optional
 
 from amulet import Block, BlockManager
 
@@ -32,19 +32,23 @@ max_section_version = 0
 
 
 class ConstructionSection:
-    __slots__ = ("sx", "sy", "sz", "blocks", "shape", "entities", "block_entities")
+    __slots__ = ("sx", "sy", "sz", "blocks", "palette", "shape", "entities", "block_entities")
 
     def __init__(
         self,
         min_position: INT_TRIPLET,
         shape: INT_TRIPLET,
         blocks: Optional[numpy.ndarray],
+        palette: List[Block],
         entities: List[amulet_nbt.TAG_Compound],
         block_entities: Optional[List[amulet_nbt.TAG_Compound]],
     ):
         self.sx, self.sy, self.sz = min_position
         self.shape = shape
         self.blocks = blocks
+        if blocks is not None:
+            assert self.shape == self.blocks.shape, 'blocks shape does not match the specified section shape'
+        self.palette = palette
         self.entities = entities
         self.block_entities = block_entities
 
@@ -59,6 +63,10 @@ class ConstructionSection:
             and self.entities == other.entities
             and self.block_entities == other.block_entities
         )
+
+    @property
+    def location(self) -> Tuple[int, int, int]:
+        return self.sx, self.sy, self.sz
 
 
 class ConstructionReader:
@@ -83,7 +91,7 @@ class ConstructionReader:
 
         self._metadata: Optional[amulet_nbt.NBTFile] = None
         self._section_index_table: Optional[List[Tuple[int, int, int, int, int, int, int, int]]] = None
-        self._palette: Optional[amulet_nbt.TAG_List] = None
+        self._palette: Optional[List[Block]] = None
         self._init_read()
 
     @property
@@ -182,6 +190,7 @@ class ConstructionReader:
                 (sx, sy, sz),
                 (shapex, shapey, shapez),
                 blocks,
+                self._palette,
                 nbt_obj["entities"].value,
                 block_entities,
             )
@@ -329,22 +338,17 @@ class ConstructionWriter:
         else:
             return amulet_nbt.TAG_Long_Array
 
-    @overload
     def write(
         self,
-        min_position: INT_TRIPLET,
-        shape: INT_TRIPLET,
-        blocks: Optional[numpy.ndarray],
-        palette: List[Block],
-        entities: List[amulet_nbt.TAG_Compound],
-        block_entities: Optional[List[amulet_nbt.TAG_Compound]]
+        section: ConstructionSection
     ):
-        """section_version==0"""
-        ...
-
-    def write(self, *args, **_):
         if self._section_version == 0:
-            (sx, sy, sz), (shapex, shapey, shapez), blocks, palette, entities, block_entities = args
+            sx, sy, sz = section.location
+            shapex, shapey, shapez = section.shape
+            blocks = section.blocks
+            entities = section.entities
+            block_entities = section.block_entities
+            palette = section.palette
             for point, shape in zip((sx, sy, sz), (shapex, shapey, shapez)):
                 assert shape >= 0, 'Shape must be positive'
                 assert point + shape <= (((point >> 4)+1) << 4), 'Section does not fit in a sub-chunk'

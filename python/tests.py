@@ -50,17 +50,18 @@ class ConstructionTestCase(unittest.TestCase):
         entities = []
         block_entities = []
 
+        section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+
         with ConstructionWriter("test_non_cube_sections.construction", TEST_EDITION, TEST_VERSION) as construction:
-            construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+            construction.write(section_in)
 
         with ConstructionReader("test_non_cube_sections.construction") as construction:
             section = construction.read(0)
 
-        self.assertEqual(section, ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+        self.assertEqual(section, section_in)
 
     @staticmethod
-    def _blocks_1() -> Tuple[np.ndarray, Tuple[int, int, int]]:
-        shape = (16, 16, 16)
+    def _blocks_1(shape=(16, 16, 16)) -> Tuple[np.ndarray, Tuple[int, int, int]]:
         blocks = np.zeros(shape, dtype=int)
         blocks[0:8, 0:8, 0:8] = 1
         blocks[0:8, 0:8, 8:16] = 2
@@ -78,13 +79,15 @@ class ConstructionTestCase(unittest.TestCase):
         entities = []
         block_entities = []
 
+        section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+
         with ConstructionWriter("test_construction_creation_1.construction", TEST_EDITION, TEST_VERSION) as construction:
-            construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+            construction.write(section_in)
 
         with ConstructionReader("test_construction_creation_1.construction") as construction:
             section = construction.read(0)
 
-        self.assertEqual(section, ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+        self.assertEqual(section, section_in)
 
     def test_construction_non_contiguous_1(self):
         blocks, shape = self._blocks_1()
@@ -96,8 +99,9 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionWriter("test_construction_non_contiguous_1.construction", TEST_EDITION, TEST_VERSION) as construction:
             for min_pos in product(range(0, 48, 16), range(0, 48, 16), range(0, 48, 16)):
                 if min_pos != (1, 1, 1):
-                    construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
-                    sections.append(ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+                    section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+                    construction.write(section_in)
+                    sections.append(section_in)
 
         with ConstructionReader("test_construction_non_contiguous_1.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
@@ -114,8 +118,9 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionWriter("test_construction_non_contiguous_2.construction", TEST_EDITION, TEST_VERSION) as construction:
             for min_pos in product(range(0, 48, 16), range(0, 48, 16), range(0, 48, 16)):
                 if 1 not in min_pos:
-                    construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
-                    sections.append(ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+                    section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+                    construction.write(section_in)
+                    sections.append(section_in)
 
         with ConstructionReader("test_construction_non_contiguous_2.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
@@ -162,17 +167,21 @@ class ConstructionTestCase(unittest.TestCase):
         with ConstructionWriter("test_construction_boundary_1.construction", TEST_EDITION, TEST_VERSION) as construction:
             for min_pos in product(range(0, 48, 16), range(0, 16, 16), range(0, 48, 16)):
                 if min_pos[0] == 32 and min_pos[2] == 32:
-                    construction.write(min_pos, shape, block_layout_4, self.small_block_palette, entities, block_entities)
-                    sections.append(ConstructionSection(min_pos, shape, block_layout_4, entities, block_entities))
+                    section_in = ConstructionSection(min_pos, shape, block_layout_4, self.small_block_palette, entities, block_entities)
+                    construction.write(section_in)
+                    sections.append(section_in)
                 elif min_pos[0] == 32:
-                    construction.write(min_pos, shape, block_layout_3, self.small_block_palette, entities, block_entities)
-                    sections.append(ConstructionSection(min_pos, shape, block_layout_3, entities, block_entities))
+                    section_in = ConstructionSection(min_pos, shape, block_layout_3, self.small_block_palette, entities, block_entities)
+                    construction.write(section_in)
+                    sections.append(section_in)
                 elif min_pos[2] == 32:
-                    construction.write(min_pos, shape, block_layout_2, self.small_block_palette, entities, block_entities)
-                    sections.append(ConstructionSection(min_pos, shape, block_layout_2, entities, block_entities))
+                    section_in = ConstructionSection(min_pos, shape, block_layout_2, self.small_block_palette, entities, block_entities)
+                    construction.write(section_in)
+                    sections.append(section_in)
                 else:
-                    construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
-                    sections.append(ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+                    section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+                    construction.write(section_in)
+                    sections.append(section_in)
 
         with ConstructionReader("test_construction_boundary_1.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
@@ -190,8 +199,9 @@ class ConstructionTestCase(unittest.TestCase):
         save_start = time.time()
         with ConstructionWriter("test_construction_creation_2.construction", TEST_EDITION, TEST_VERSION) as construction:
             for min_pos in product(range(0, 16 * 50, 16), range(0, 16 * 50, 16), range(0, 16 * 50, 16)):
-                construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
-                sections.append(ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+                section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+                construction.write(section_in)
+                sections.append(section_in)
         save_end = time.time()
 
         load_start = time.time()
@@ -205,17 +215,17 @@ class ConstructionTestCase(unittest.TestCase):
         print(f"Loading Took: {load_end - load_start:02.4f} seconds")
 
     def test_construction_creation_3(self):
-        blocks, shape = self._blocks_1()
+        blocks, shape = self._blocks_1((14, 14, 14))
         entities = []
         block_entities = []
 
         with ConstructionWriter("test_construction_creation_3.construction", TEST_EDITION, TEST_VERSION) as construction:
-            construction.write((2, 2, 2), shape, blocks, self.small_block_palette, entities, block_entities)
-            section = ConstructionSection((2, 2, 2), shape, blocks, entities, block_entities)
+            section_in = ConstructionSection((2, 2, 2), shape, blocks, self.small_block_palette, entities, block_entities)
+            construction.write(section_in)
 
         with ConstructionReader("test_construction_creation_3.construction") as construction:
             self.assertEqual(1, len(construction.sections))
-            self.assertEqual(section, construction.read(0))
+            self.assertEqual(section_in, construction.read(0))
 
     def test_stacking(self):
         blocks, shape = self._blocks_1()
@@ -226,8 +236,9 @@ class ConstructionTestCase(unittest.TestCase):
 
         with ConstructionWriter("test_stacking.construction", TEST_EDITION, TEST_VERSION) as construction:
             for min_pos in product(range(0, 16, 16), range(0, 48, 16), range(0, 16, 16)):
-                construction.write(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
-                sections.append(ConstructionSection(min_pos, shape, blocks, entities, block_entities))
+                section_in = ConstructionSection(min_pos, shape, blocks, self.small_block_palette, entities, block_entities)
+                construction.write(section_in)
+                sections.append(section_in)
 
         with ConstructionReader("test_stacking.construction") as construction:
             sections2 = [construction.read(i) for i in range(len(construction.sections))]
@@ -243,7 +254,8 @@ class ConstructionTestCase(unittest.TestCase):
 
     def test_section_no_blocks(self):
         with ConstructionWriter("test_section_no_blocks.construction", TEST_EDITION, TEST_VERSION) as construction:
-            construction.write((0, 0, 0), (16, 16, 16), None, self.small_block_palette, [], None)
+            section_in = ConstructionSection((0, 0, 0), (16, 16, 16), None, self.small_block_palette, [], None)
+            construction.write(section_in)
 
         with ConstructionReader("test_section_no_blocks.construction") as construction:
             self.assertEqual(1, len(construction.sections))
