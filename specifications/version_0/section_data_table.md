@@ -41,14 +41,21 @@ Each section data entry is a gzip'd binary TAG_Compound with the following struc
         "blocks": <See below>
     })
 
-In order to reduce size of the construction format, the `blocks` array can either be a `TAG_Byte_Array`, a `TAG_Int_Array`,
-or a `TAG_Long_Array` and the value of the `blocks_array_type` describes which of the two tag types was used by using their 
-Tag ID, which can either be  7 (for TAG_Byte_Array) or 11 (for TAG_Int_Array) or 12 (for TAG_Long_Array)
+## Blocks
 
-There is also a special case where this tag equals -1 which means that the `blocks` and `block_entities` tag do not exist. This is useful for storing sections that contain entities but are not populated with block data.
+In order to reduce size of the construction format, the `blocks` array can be stored as any of the NBT Array types. The value of the `blocks_array_type` describes which of the tag types is used.
+
+There is also a special case where `blocks` and `block_entities` do not exist. This is useful for storing sections that contain entities but are not populated with block data.
+
+|`blocks_array_type` value|`blocks` tag type|
+|---|---|
+|-1|`blocks` and `block_entities` keys do not exist|
+|7|`TAG_Byte_Array`|
+|11|`TAG_Int_Array`|
+|12|`TAG_Long_Array`|
 
 ### Blocks Array
 The block array for each chunk is a flattened array of size specified in the [metadata section index table](metadata.md#section-index-table) with each element being an index into the [block palette](metadata.md#block-palette).
 
-### Entities and BlockEntities
+## Entities and BlockEntities
 Entities and BlockEntities are contained in a `TAG_List` with each element being a `TAG_Compound` in the format as shown above. They are converted into the format for the version specified in the [metadata](metadata.md#export-version) before they are serialised.
