@@ -16,13 +16,25 @@ Each section data entry is a gzip'd binary TAG_Compound with the following struc
 
     TAG_Compound({
         "entities": TAG_List([
-            TAG_Compound({...}),
-            TAG_Compound({...}),
+            TAG_Compound({
+                "namespace": TAG_String(),
+                "base_name": TAG_String(),
+                "x": TAG_Double(),
+                "y": TAG_Double(),
+                "z": TAG_Double(),
+                "nbt": TAG_Compound()
+            })
             ...
         ]),
         "block_entities": TAG_List([
-            TAG_Compound({...}),
-            TAG_Compound({...}),
+            TAG_Compound({
+                "namespace": TAG_String(),
+                "base_name": TAG_String(),
+                "x": TAG_Int(),
+                "y": TAG_Int(),
+                "z": TAG_Int(),
+                "nbt": TAG_Compound()
+            })
             ...
         ]),
         "blocks_array_type": TAG_Byte(),
@@ -39,4 +51,4 @@ There is also a special case where this tag equals -1 which means that the `bloc
 The block array for each chunk is a flattened array of size specified in the [metadata section index table](metadata.md#section-index-table) with each element being an index into the [block palette](metadata.md#block-palette).
 
 ### Entities and BlockEntities
-Entities and BlockEntities are contained in a `TAG_List` with each element being a `TAG_Compound` of the entire NBT data associated with the given Entity/BlockEntity. They are serialised into the format for the version specified in the [metadata](metadata.md#export-version)
+Entities and BlockEntities are contained in a `TAG_List` with each element being a `TAG_Compound` in the format as shown above. They are converted into the format for the version specified in the [metadata](metadata.md#export-version) before they are serialised.
