@@ -65,8 +65,11 @@ The `block_palette` is a list of TAG_Compound's with each containing the data fo
         "namespace": TAG_String("<block namespace>"),
         "blockname": TAG_String("<block base name>"),
         "properties": TAG_Compound({
-            "<property_name>": TAG_String("<property value>"),
-            "<property_name>": TAG_String("<property value>"),
+            "<property_name>": TAG_Byte(),
+            "<property_name>": TAG_Short(),
+            "<property_name>": TAG_Int(),
+            "<property_name>": TAG_Long(),
+            "<property_name>": TAG_String(),
             ...
         }),
         "extra_blocks": TAG_List([
