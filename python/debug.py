@@ -15,8 +15,10 @@ def get_info(construction_file):
             print(f'Section {i}, Pos:({posx}, {posy}, {posz}), Size:({sizex}, {sizey}, {sizez})')
             section = construction.read(i)
             print('\t', section.blocks)
-            print('\t', section.entities)
-            print('\t', section.block_entities)
+            for e in section.entities:
+                print('\t', e)
+            for e in section.block_entities:
+                print('\t', e)
 
 
 if __name__ == '__main__':
