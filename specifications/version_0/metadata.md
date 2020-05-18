@@ -18,6 +18,7 @@ The metadata for the construction is a gzip'd TAG_Compound laid out in the follo
             TAG_Compound(<block entry>),
             ...
         ]),
+        "created_with": TAG_String()
     })
     
 ## Selection Boxes
@@ -37,8 +38,8 @@ The real format of the `section_index_table` is `IIIBBBII` where `I` is a uint32
 
 Each represents the following
 
-- `III`: The X, Y, and Z block coordinates of the section
-- `BBB`: The block shape of the section in X, Y, Z order
+- `III`: The X, Y, and Z block coordinates of the minimum point of the section
+- `BBB`: The shape of the section in blocks in X, Y, Z order
 - `I`: The starting byte of the [section data entry](section_data_table.md#section-data-entry) in the file
 - `I`: The byte length of the section data entry
 
@@ -64,8 +65,11 @@ The `block_palette` is a list of TAG_Compound's with each containing the data fo
         "namespace": TAG_String("<block namespace>"),
         "blockname": TAG_String("<block base name>"),
         "properties": TAG_Compound({
-            "<property_name>": TAG_String("<property value>"),
-            "<property_name>": TAG_String("<property value>"),
+            "<property_name>": TAG_Byte(),
+            "<property_name>": TAG_Short(),
+            "<property_name>": TAG_Int(),
+            "<property_name>": TAG_Long(),
+            "<property_name>": TAG_String(),
             ...
         }),
         "extra_blocks": TAG_List([
@@ -74,3 +78,7 @@ The `block_palette` is a list of TAG_Compound's with each containing the data fo
             ...
         ])
     })
+    
+## Created With
+
+A space for the writing program to identify itself to help with debugging issues.
