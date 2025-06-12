@@ -1,6 +1,6 @@
 # Construction Format Specification (Version 0)
 
-All data is stored in big endian format.
+All data is stored in big endian format. NBT strings are encoded in Java's modified utf-8 format.
 
 The overall structure of the file is as follows:
 
